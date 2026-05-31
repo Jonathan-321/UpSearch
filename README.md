@@ -1,121 +1,203 @@
 # UpSearch
 
-AI-powered research-to-reach pipeline. Turns public signal (Reddit, HN) into targeted cold outreach to engineers and researchers working on real open problems.
+UpSearch is an AI-assisted research-to-reach pipeline for finding technical
+opportunities and turning them into focused outreach emails. It searches public
+signals from Reddit and Hacker News, ranks the results against a student
+profile, suggests an outreach strategy, drafts an email, and optionally logs the
+attempt to Weights & Biases.
 
----
+The repository currently contains:
 
-## Judging Criteria — How UpSearch Addresses Each
+- A working Python CLI that runs the full pipeline with live source and LLM
+  calls.
+- A React and Vite frontend prototype that demonstrates the intended user
+  experience with mock data. It is not connected to the Python pipeline yet.
 
-| Criterion | How |
-|---|---|
-| **Agent Orchestration** | Four specialized agents (Scout, Analyst, Strategist, Writer) run in sequence, each consuming the prior agent's structured output |
-| **Utility** | Solves a real student problem: finding the right people working on the right problems and reaching them with a credible, specific message |
-| **Technical Execution** | Tool-use Scout Agent, prompt-cached Claude Opus 4.8 calls, structured JSON handoffs between agents, W&B experiment tracking |
-| **Creativity** | Reframes cold outreach as a research pipeline — signal-first, then contact — instead of shotgun emailing |
-| **Sponsor Usage** | W&B tracks every outreach attempt as an experiment: fit score, draft artifact, sent/reply status, iterable over time |
+## Pipeline
 
----
-
-## Agent Architecture
-
-```
-User Input (topic)
-       │
-       ▼
-┌─────────────────────────────────────────┐
-│  Scout Agent  (Claude Opus 4.8 + tools) │
-│  Decides what to search, calls Reddit   │
-│  and HN APIs via tool use, returns      │
-│  a ranked list of raw posts             │
-└──────────────────────┬──────────────────┘
-                       │  posts[]
-                       ▼
-┌─────────────────────────────────────────┐
-│  Analyst Agent  (Claude Opus 4.8)       │
-│  Reads each post, scores fit (1-10),    │
-│  extracts: problem, gap, contribution   │
-└──────────────────────┬──────────────────┘
-                       │  analysis{}  (user picks one)
-                       ▼
-┌─────────────────────────────────────────┐
-│  Strategist Agent  (Claude Opus 4.8)    │
-│  Decides: who to contact, what hook     │
-│  to use, which channel, icebreaker      │
-└──────────────────────┬──────────────────┘
-                       │  strategy{}
-                       ▼
-┌─────────────────────────────────────────┐
-│  Writer Agent  (Claude Opus 4.8)        │
-│  Drafts ≤200-word cold email            │
-│  Student voice, no dashes, one ask      │
-└──────────────────────┬──────────────────┘
-                       │  draft (text)
-                       ▼
-┌─────────────────────────────────────────┐
-│  W&B Tracker                            │
-│  Logs run config, fit score, draft      │
-│  artifact. Reply/sent updated manually. │
-└─────────────────────────────────────────┘
+```text
+Topic or role
+    |
+    v
+Scout Agent
+    Searches Reddit and Hacker News for relevant public posts
+    |
+    v
+Analyst Agent
+    Extracts the opportunity, scores fit from 1 to 10, and identifies an angle
+    |
+    v
+User selection
+    Choose one of the highest-fit leads
+    |
+    v
+Strategist Agent
+    Recommends a target role, hook, channel, and icebreaker
+    |
+    v
+Writer Agent
+    Produces a direct outreach email with a 200-word body limit
+    |
+    v
+W&B Tracker
+    Optionally logs the lead, fit score, status, and draft artifact
 ```
 
----
+## Features
 
-## Stack
+- Two modes: `jobs` for hiring signals and `research` for open problems.
+- Tool-guided scouting across Reddit and Hacker News.
+- Support for Anthropic Claude or DeepSeek through an environment variable.
+- Structured handoffs between Scout, Analyst, Strategist, and Writer agents.
+- A local `profile.txt` file for tailoring the fit analysis and outreach draft.
+- Optional W&B logging for outreach experiments and draft artifacts.
+- A separate frontend prototype for exploring the planned browser workflow.
 
-| Layer | Tool |
-|---|---|
-| All agents | Claude Opus 4.8 (`claude-opus-4-8`) via Anthropic SDK |
-| Scout sourcing | Reddit JSON API + HN Algolia API (no auth required) |
-| Experiment tracking | [Weights & Biases](https://wandb.ai/home) |
-| Outreach channels | School email (primary), LinkedIn, X |
-| CLI | Python + Rich |
+## Requirements
 
----
+- Python 3.10 or newer
+- An Anthropic API key or a DeepSeek API key
+- A Weights & Biases API key
+- Node.js and npm only if you want to run the frontend prototype
 
-## Setup
+The source searchers use public Reddit JSON and Hacker News Algolia endpoints,
+so they do not require separate credentials.
+
+## CLI Setup
+
+1. Create and activate a virtual environment.
+
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate
+   ```
+
+   On Windows PowerShell:
+
+   ```powershell
+   python -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   ```
+
+2. Install the Python dependencies.
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. Create a `.env` file in the project root.
+
+   For Claude:
+
+   ```dotenv
+   MODEL_PROVIDER=claude
+   ANTHROPIC_API_KEY=your_anthropic_key
+   WANDB_API_KEY=your_wandb_key
+   ```
+
+   For DeepSeek:
+
+   ```dotenv
+   MODEL_PROVIDER=deepseek
+   DEEPSEEK_API_KEY=your_deepseek_key
+   WANDB_API_KEY=your_wandb_key
+   ```
+
+4. Edit `profile.txt` with the background, interests, and goals that the agents
+   should use when scoring leads and writing outreach.
+
+## Run the CLI
+
+Start an interactive run:
 
 ```bash
-# 1. Install dependencies
-pip install -r requirements.txt
-
-# 2. Add your Anthropic API key to .env
-ANTHROPIC_API_KEY=your_key_here
-WANDB_API_KEY=your_wandb_key_here   # already set
-
-# 3. Edit profile.txt with your actual background
-
-# 4. Run
 python main.py
 ```
 
----
+Or pass the mode and topic directly:
 
-## Outreach rules (baked into every agent)
-
-- Email body: **200 words max**
-- No em-dashes, no en-dashes, no buzzwords
-- Open with a specific icebreaker tied to their actual work
-- One low-friction ask at the end (15-min call or one question)
-- Log everything to W&B — iterate on what gets replies
-
----
-
-## File structure
-
+```bash
+python main.py --mode jobs --topic "ML inference engineer internship"
+python main.py --mode research --topic "speculative decoding"
 ```
+
+Available options:
+
+| Option | Description |
+|---|---|
+| `--mode research` or `--mode jobs` | Select the pipeline mode |
+| `--topic "..."` | Provide the search topic or target role |
+| `--pick N` | Automatically choose ranked result number `N` |
+| `--no-log` | Skip the W&B logging prompt after generating the draft |
+
+Note: the current CLI validates `WANDB_API_KEY` at startup even when
+`--no-log` is used.
+
+## Frontend Prototype
+
+The `frontend/` directory contains a Vite-powered React prototype of the
+planned browser interface. It simulates the pipeline with delays and mock
+opportunities from `frontend/src/mockData.ts`. Its filter controls and W&B
+actions are visual demonstrations only.
+
+Run it locally:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Build the frontend:
+
+```bash
+cd frontend
+npm run build
+```
+
+## Outreach Rules
+
+The Writer agent is prompted to keep each email direct and specific:
+
+- Keep the email body at or below 200 words.
+- Open with an icebreaker tied to the recipient's actual work.
+- Use a student voice without corporate buzzwords.
+- Avoid em dashes and en dashes.
+- End with one low-friction ask, such as a 15-minute call or one question.
+
+## Project Structure
+
+```text
 UpSearch/
-├── main.py              # Orchestrator — runs all four agents in sequence
-├── profile.txt          # Your background (edit this)
-├── requirements.txt
-├── .env                 # API keys (gitignored)
-└── upsearch/
-    ├── agents/
-    │   ├── scout.py     # Stage 1 — tool-use search agent
-    │   ├── analyst.py   # Stage 2 — technical note + fit score
-    │   ├── strategist.py# Stage 3 — who/hook/channel/icebreaker
-    │   └── writer.py    # Stage 4 — cold email draft
-    ├── sourcing/
-    │   ├── reddit.py    # Reddit JSON API
-    │   └── hackernews.py# HN Algolia API
-    └── tracker.py       # W&B logging
+|-- main.py                     # CLI orchestrator
+|-- profile.txt                 # Student background used by the agents
+|-- requirements.txt            # Python dependencies
+|-- .env                        # Local API keys, ignored by git
+|-- upsearch/
+|   |-- llm.py                  # Claude and DeepSeek routing
+|   |-- tracker.py              # W&B experiment logging
+|   |-- agents/
+|   |   |-- scout.py            # Searches public sources through tool use
+|   |   |-- analyst.py          # Scores fit and extracts an outreach angle
+|   |   |-- strategist.py       # Selects target, hook, channel, and icebreaker
+|   |   `-- writer.py           # Drafts the outreach email
+|   `-- sourcing/
+|       |-- base.py             # Shared Post dataclass
+|       |-- reddit.py           # Reddit JSON search client
+|       `-- hackernews.py       # Hacker News Algolia search client
+`-- frontend/
+    |-- package.json            # Vite scripts and frontend dependencies
+    `-- src/
+        |-- App.tsx             # Prototype interface
+        |-- hooks/usePipeline.ts# Mock pipeline state and delays
+        `-- mockData.ts         # Demo opportunities, strategy, and W&B runs
 ```
+
+## Current Limitations
+
+- The frontend does not call a backend API yet.
+- The frontend filters do not affect the mocked results yet.
+- The CLI catches source request failures and continues, so a blocked or
+  unavailable public endpoint may result in fewer leads.
+- Reply status updates after logging are currently managed in W&B rather than
+  through the CLI.

@@ -1,11 +1,17 @@
 #!/usr/bin/env python3
 """
 UpSearch — Research-to-Reach Pipeline
-Orchestrates: Scout → Analyst → Strategist → Writer → W&B
+Orchestrates: Scout -> Analyst -> Strategist -> Writer -> W&B
 Supports: Claude Opus 4.8 and DeepSeek (set MODEL_PROVIDER in .env)
+
+Usage:
+  python main.py                          # interactive
+  python main.py --mode jobs --topic "ML inference engineer internship"
+  python main.py --mode research --topic "speculative decoding"
 """
 import os
 import sys
+import argparse
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -14,7 +20,7 @@ load_dotenv()
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
-from rich.prompt import Prompt, IntPrompt, Confirm
+from rich.prompt import IntPrompt, Confirm
 from rich.rule import Rule
 
 from upsearch.agents import scout, analyst, strategist, writer
@@ -43,12 +49,26 @@ def check_env():
         sys.exit(1)
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="UpSearch — Research-to-Reach Pipeline")
+    parser.add_argument("--mode", choices=["research", "jobs"], default=None,
+                        help="Pipeline mode: 'jobs' for job search, 'research' for open problems")
+    parser.add_argument("--topic", type=str, default=None,
+                        help="Topic or role to search for")
+    parser.add_argument("--pick", type=int, default=None,
+                        help="Auto-select result number (skips interactive prompt)")
+    parser.add_argument("--no-log", action="store_true",
+                        help="Skip W&B logging prompt")
+    return parser.parse_args()
+
+
 def main():
+    args = parse_args()
     provider = llm.active_provider()
     model = llm.active_model()
 
     console.print(Panel(
-        f"[bold cyan]UpSearch[/bold cyan]  |  Scout → Analyst → Strategist → Writer\n"
+        f"[bold cyan]UpSearch[/bold cyan]  |  Scout -> Analyst -> Strategist -> Writer\n"
         f"[dim]Model: {model}  |  Provider: {provider}[/dim]",
         expand=False,
     ))
@@ -56,14 +76,14 @@ def main():
     check_env()
     profile = load_profile()
 
-    mode = Prompt.ask(
-        "\n[bold]Mode[/bold]",
-        choices=["research", "jobs"],
-        default="jobs",
-    )
-    topic = Prompt.ask(
-        "[bold]Topic or role[/bold] (e.g. 'ML inference engineer internship' or 'AI safety interpretability')"
-    )
+    mode = args.mode or input("\nMode [research/jobs] (default: jobs): ").strip() or "jobs"
+    if mode not in ("research", "jobs"):
+        mode = "jobs"
+
+    topic = args.topic or input("Topic or role: ").strip()
+    if not topic:
+        console.print("[red]No topic provided.[/red]")
+        sys.exit(1)
 
     # ── Stage 1: Scout Agent ──────────────────────────────────────────────────
     console.print(Rule(f"[cyan]Stage 1: Scout Agent[/cyan] [dim]({provider})[/dim]"))
@@ -117,7 +137,10 @@ def main():
 
     console.print(table)
 
-    choice = IntPrompt.ask("\nPick a result to build outreach for", default=1)
+    if args.pick is not None:
+        choice = args.pick
+    else:
+        choice = IntPrompt.ask("\nPick a result to build outreach for", default=1)
     if choice < 1 or choice > len(results[:8]):
         console.print("[red]Invalid choice.[/red]")
         sys.exit(1)
@@ -163,7 +186,7 @@ def main():
     # ── Stage 5: W&B Logging ──────────────────────────────────────────────────
     console.print(Rule("[cyan]Stage 5: W&B Tracker[/cyan]"))
 
-    if Confirm.ask("Log this run to W&B?", default=True):
+    if not args.no_log and Confirm.ask("Log this run to W&B?", default=True):
         sent = Confirm.ask("Mark as already sent?", default=False)
         with console.status("Logging to W&B..."):
             run_id = tracker.log(post, analysis, strategy, draft, sent=sent)
