@@ -237,6 +237,22 @@
     text-transform: uppercase;
     color: var(--accent);
   }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-2);
+  }
+
+  .ring-running {
+    box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.15);
+  }
+
+  .ring-done {
+    box-shadow: 0 0 0 1px rgba(74, 222, 128, 0.12);
+  }
 }
 
 /* ── Details chevron ───────────────────────────────────────────── */
@@ -267,6 +283,7 @@ details[open] .details-chevron {
 }
 .animate-fade-in-up { animation: reveal 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .animate-shimmer { animation: shimmer 1.6s ease-in-out infinite; }
+.animate-ping-slow { animation: ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite; }
 
 @keyframes shimmer {
   0%   { background-position: 200% 0; }

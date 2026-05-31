@@ -187,6 +187,36 @@ def set_company_status(company_id: int, status: str):
         c.execute("UPDATE companies SET status=? WHERE id=?", (status, company_id))
 
 
+def clear_company_generated_state(company_id: int):
+    """Remove generated packet children before rebuilding a company packet.
+
+    Company metadata stays intact, but problems, people, packets, draft messages,
+    approvals, sends, follow-ups, and source rows are regenerated per run. This
+    keeps repeated runs idempotent instead of accumulating stale packet rows.
+    """
+    with conn() as c:
+        packet_rows = c.execute("SELECT id FROM packets WHERE company_id=?", (company_id,)).fetchall()
+        packet_ids = [row["id"] for row in packet_rows]
+        if packet_ids:
+            placeholders = ",".join("?" for _ in packet_ids)
+            message_rows = c.execute(
+                f"SELECT id FROM messages WHERE packet_id IN ({placeholders})",
+                packet_ids,
+            ).fetchall()
+            message_ids = [row["id"] for row in message_rows]
+            if message_ids:
+                msg_placeholders = ",".join("?" for _ in message_ids)
+                c.execute(f"DELETE FROM follow_ups WHERE message_id IN ({msg_placeholders})", message_ids)
+                c.execute(f"DELETE FROM send_events WHERE message_id IN ({msg_placeholders})", message_ids)
+                c.execute(f"DELETE FROM approvals WHERE message_id IN ({msg_placeholders})", message_ids)
+                c.execute(f"DELETE FROM messages WHERE id IN ({msg_placeholders})", message_ids)
+            c.execute(f"DELETE FROM packets WHERE id IN ({placeholders})", packet_ids)
+
+        c.execute("DELETE FROM sources WHERE company_id=?", (company_id,))
+        c.execute("DELETE FROM problems WHERE company_id=?", (company_id,))
+        c.execute("DELETE FROM people WHERE company_id=?", (company_id,))
+
+
 # ── Problem helpers ───────────────────────────────────────────────────────────
 
 def insert_problem(company_id: int, title: str, description: str,

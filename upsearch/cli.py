@@ -8,6 +8,7 @@ from pathlib import Path
 
 from .config import load_settings
 from .connectors import default_connector_profiles
+from .harnessed_orchestrator import run_harnessed_packet, report
 from .model_router import ModelRouter, TaskType
 from .schemas import AgentRunRecord
 from .seed_packets import build_baseten_seed_packet
@@ -107,6 +108,15 @@ def build_parser() -> argparse.ArgumentParser:
     build_seed.add_argument("--seed-root", default=str(DEFAULT_SEED_ROOT))
     build_seed.add_argument("--output", default=".upsearch/packets/baseten.json")
 
+    run_packet = subparsers.add_parser(
+        "run",
+        help="Run the full harnessed packet workflow for a company (Profile → Company → Problem → People → Note → Outreach → QA → DB).",
+    )
+    run_packet.add_argument("--company", required=True, help="Company name, e.g. Baseten")
+    run_packet.add_argument("--lane", default="ai_infra",
+                            choices=["ai_infra", "inference_systems", "agentic_ai", "developer_tools", "data_platforms", "robotics_ai"])
+    run_packet.add_argument("--profile", default="profile.txt", help="Path to profile text file")
+
     return parser
 
 
@@ -124,6 +134,16 @@ def main() -> None:
 
     if args.command == "build-seed":
         _build_seed(args)
+        return
+
+    if args.command == "run":
+        profile_text = Path(args.profile).read_text(encoding="utf-8") if Path(args.profile).exists() else ""
+        ctx = run_harnessed_packet(
+            company_name=args.company,
+            lane=args.lane,
+            profile_text=profile_text,
+        )
+        print(report(ctx))
         return
 
     parser.error(f"Unknown command: {args.command}")

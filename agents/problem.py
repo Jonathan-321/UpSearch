@@ -2,8 +2,8 @@
 Problem Agent — extracts current open technical problems from public sources.
 Output: ranked list of specific, source-backed problem briefs.
 """
-import json
 from upsearch import llm
+from upsearch.json_utils import parse_model_json_object
 from upsearch.sourcing import hackernews, reddit
 
 SYSTEM = """You are a Problem Agent. Given a company brief and public source material,
@@ -51,11 +51,9 @@ def run(company_name: str, company_record: dict, user_profile: dict) -> dict:
         ),
         max_tokens=1024,
     )
-    start, end = text.find("{"), text.rfind("}") + 1
-    try:
-        result = json.loads(text[start:end]) if start != -1 else {"problems": []}
-    except json.JSONDecodeError:
-        result = {"problems": []}
+    result = parse_model_json_object(text, {"problems": []})
+    if not result.get("problems"):
+        result = {"problems": [_fallback_problem(company_name, company_record, all_posts)]}
 
     return {
         "result": result,
@@ -63,4 +61,41 @@ def run(company_name: str, company_record: dict, user_profile: dict) -> dict:
         "confidence": 0.65 if all_posts else 0.4,
         "assumptions": ["Problem list based on public signal; direct company contact may reveal different priorities"],
         "next_action": "run_people_agent",
+    }
+
+
+def _fallback_problem(company_name: str, company_record: dict, public_posts: list) -> dict:
+    """Conservative fallback when the model output cannot be parsed.
+
+    This prevents a malformed JSON character from erasing the whole packet. The
+    fallback is intentionally framed as a candidate problem and carries the
+    source uncertainty forward for QA/human review.
+    """
+    what_they_do = company_record.get("what_they_do", "")
+    tech_stack = ", ".join(company_record.get("tech_stack", [])[:5])
+    urls = [p.url for p in public_posts if getattr(p, "url", "")]
+    website = company_record.get("website")
+    if website:
+        urls.append(website)
+
+    focus = "production inference reliability and evaluation"
+    if "lora" in f"{what_they_do} {tech_stack}".lower():
+        focus = "adapter-aware routing and validation for LoRA or continually updated models"
+    elif "gpu" in f"{what_they_do} {tech_stack}".lower():
+        focus = "GPU inference performance, cold starts, and capacity efficiency"
+
+    return {
+        "title": focus.title(),
+        "description": (
+            f"{company_name} appears to operate in a technical area where {focus} matters. "
+            "The first useful contribution is a scoped measurement or validation harness that makes the "
+            "problem observable before claiming an optimization."
+        ),
+        "source_urls": list(dict.fromkeys(urls)),
+        "source_signal": (
+            "Fallback generated from company brief and available public posts after model JSON parsing failed; "
+            "requires source verification before outreach."
+        ),
+        "relevance_score": 6,
+        "contribution_surface": "Build a small benchmark, router, validator, or report generator that makes the system tradeoff measurable.",
     }

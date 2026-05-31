@@ -3,8 +3,8 @@ Outreach Agent — writes concise, human outreach variants.
 Variants: email, linkedin_note, connection_followup, recruiter (optional).
 All variants: <=200 words, student voice, no buzzwords, specific icebreaker, one clear ask.
 """
-import json
 from upsearch import llm
+from upsearch.json_utils import parse_model_json_object
 
 SYSTEM = """You are an Outreach Agent writing cold messages for a technical student.
 
@@ -56,10 +56,8 @@ def run(
         ),
         max_tokens=1200,
     )
-    start, end = text.find("{"), text.rfind("}") + 1
-    try:
-        result = json.loads(text[start:end]) if start != -1 else {}
-    except json.JSONDecodeError:
+    result = parse_model_json_object(text)
+    if not result:
         result = {"email": text, "linkedin_note": "", "connection_followup": ""}
 
     return {

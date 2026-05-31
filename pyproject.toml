@@ -3,7 +3,18 @@ name = "upsearch"
 version = "0.1.0"
 description = "Multi-agent opportunity intelligence and outreach orchestration."
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "anthropic>=0.105.2",
+    "fastapi>=0.136.3",
+    "httpx>=0.28.1",
+    "openai>=2.38.0",
+    "pydantic>=2.13.4",
+    "pydantic-settings>=2.14.1",
+    "python-dotenv>=1.2.2",
+    "requests>=2.34.2",
+    "rich>=15.0.0",
+    "uvicorn>=0.48.0",
+]
 
 [project.optional-dependencies]
 tracking = ["wandb>=0.17"]
@@ -17,4 +28,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["upsearch*"]
+include = ["upsearch*", "agents*"]
+
+[tool.setuptools]
+py-modules = ["db"]

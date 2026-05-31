@@ -2,8 +2,8 @@
 People Agent — finds and ranks relevant people at the target company.
 Proximity types: engineer, researcher, founder, FDE, PM, recruiter, hiring_manager.
 """
-import json
 from upsearch import llm
+from upsearch.json_utils import parse_model_json_object
 from upsearch.sourcing import hackernews
 
 SYSTEM = """You are a People Agent for an Opportunity Intelligence OS. Given a company and problem,
@@ -50,11 +50,7 @@ def run(company_name: str, problem: dict, user_profile: dict) -> dict:
         ),
         max_tokens=1024,
     )
-    start, end = text.find("{"), text.rfind("}") + 1
-    try:
-        result = json.loads(text[start:end]) if start != -1 else {"people": []}
-    except json.JSONDecodeError:
-        result = {"people": []}
+    result = parse_model_json_object(text, {"people": []})
 
     return {
         "result": result,

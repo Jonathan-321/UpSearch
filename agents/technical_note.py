@@ -4,6 +4,7 @@ Sections: problem framing, current landscape, contribution idea, evaluation appr
 """
 import json
 from upsearch import llm
+from upsearch.json_utils import parse_model_json_object
 
 SYSTEM = """You are a Technical Note Agent. Write a concise one-page technical note (400-600 words)
 for a student to use as a reference artifact when reaching out to a technical team.
@@ -54,10 +55,8 @@ def run(company_name: str, company_record: dict, problem: dict, user_profile: di
         ),
         max_tokens=1200,
     )
-    start, end = text.find("{"), text.rfind("}") + 1
-    try:
-        result = json.loads(text[start:end]) if start != -1 else {}
-    except json.JSONDecodeError:
+    result = parse_model_json_object(text)
+    if not result:
         result = {"technical_note": text, "adjacent_proof": ""}
 
     return {

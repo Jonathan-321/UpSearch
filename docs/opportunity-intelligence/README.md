@@ -62,6 +62,18 @@ The next implementation step is not more one-off sourcing. It is to turn the man
 
 See `multi-agent-orchestrator-plan.md` for the implementation plan.
 
+For the concrete Phase 1 build path, agent/tool matrix, Hermes role, hosting path, and short presentation outline, see:
+
+```text
+docs/opportunity-intelligence/phase-1-build-plan.md
+```
+
+For the component-by-component audit and anti-breakage checklist, see:
+
+```text
+docs/opportunity-intelligence/component-audit.md
+```
+
 ## Safety rules
 
 1. Do not store API keys in docs, prompts, screenshots, commits, or source files.

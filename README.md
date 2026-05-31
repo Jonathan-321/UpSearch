@@ -45,6 +45,13 @@ For target contacts, the People Agent searches public Hacker News signal and
 may suggest public LinkedIn or GitHub URLs when available. Those profile links
 must be verified manually before you use them for outreach.
 
+## Product planning docs
+
+- [Opportunity Intelligence OS docs](docs/opportunity-intelligence/README.md)
+- [Multi-agent orchestrator plan](docs/opportunity-intelligence/multi-agent-orchestrator-plan.md)
+- [Phase 1 build plan](docs/opportunity-intelligence/phase-1-build-plan.md)
+- [Component audit](docs/opportunity-intelligence/component-audit.md)
+
 ## Quick Start
 
 ### Requirements
