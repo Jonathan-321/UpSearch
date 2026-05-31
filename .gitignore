@@ -1,7 +1,30 @@
+# secrets
 .env
 *.env
+
+# python
 __pycache__/
 *.pyc
+*.pyo
 .venv/
 venv/
+env/
+
+# wandb
 wandb/
+
+# node
+frontend/node_modules/
+frontend/package-lock.json
+frontend/dist/
+frontend/.vite/
+
+# playwright artifacts
+frontend/driver.mjs
+frontend/ss*.png
+frontend/test-results/
+frontend/playwright-report/
+
+# os
+.DS_Store
+Thumbs.db
