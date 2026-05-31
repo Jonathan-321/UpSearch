@@ -2,6 +2,7 @@
 """
 UpSearch — Research-to-Reach Pipeline
 Orchestrates: Scout → Analyst → Strategist → Writer → W&B
+Supports: Claude Opus 4.8 and DeepSeek (set MODEL_PROVIDER in .env)
 """
 import os
 import sys
@@ -15,10 +16,9 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.prompt import Prompt, IntPrompt, Confirm
 from rich.rule import Rule
-from rich import print as rprint
 
 from upsearch.agents import scout, analyst, strategist, writer
-from upsearch import tracker
+from upsearch import tracker, llm
 
 console = Console()
 
@@ -27,38 +27,52 @@ def load_profile() -> str:
     p = Path("profile.txt")
     if p.exists():
         return p.read_text().strip()
-    return "CS student interested in ML and systems."
+    return "CS student interested in ML and systems, looking for internships and research roles."
 
 
 def check_env():
-    missing = []
-    if not os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_API_KEY") == "your_anthropic_key_here":
-        missing.append("ANTHROPIC_API_KEY")
+    provider = llm.active_provider()
+    if provider == "deepseek" and not os.environ.get("DEEPSEEK_API_KEY"):
+        console.print("[red]Missing DEEPSEEK_API_KEY in .env[/red]")
+        sys.exit(1)
+    if provider == "claude" and not os.environ.get("ANTHROPIC_API_KEY"):
+        console.print("[red]Missing ANTHROPIC_API_KEY in .env[/red]")
+        sys.exit(1)
     if not os.environ.get("WANDB_API_KEY"):
-        missing.append("WANDB_API_KEY")
-    if missing:
-        console.print(f"[red]Missing in .env: {', '.join(missing)}[/red]")
+        console.print("[red]Missing WANDB_API_KEY in .env[/red]")
         sys.exit(1)
 
 
 def main():
+    provider = llm.active_provider()
+    model = llm.active_model()
+
     console.print(Panel(
-        "[bold cyan]UpSearch[/bold cyan]  |  Scout → Analyst → Strategist → Writer\n"
-        "[dim]AI-powered research-to-reach pipeline[/dim]",
+        f"[bold cyan]UpSearch[/bold cyan]  |  Scout → Analyst → Strategist → Writer\n"
+        f"[dim]Model: {model}  |  Provider: {provider}[/dim]",
         expand=False,
     ))
 
     check_env()
     profile = load_profile()
 
-    topic = Prompt.ask("\n[bold]What problem space do you want to explore?[/bold]")
+    mode = Prompt.ask(
+        "\n[bold]Mode[/bold]",
+        choices=["research", "jobs"],
+        default="jobs",
+    )
+    topic = Prompt.ask(
+        "[bold]Topic or role[/bold] (e.g. 'ML inference engineer internship' or 'AI safety interpretability')"
+    )
 
     # ── Stage 1: Scout Agent ──────────────────────────────────────────────────
-    console.print(Rule("[cyan]Stage 1: Scout Agent[/cyan]"))
-    console.print("[dim]Claude is deciding what to search and fetching posts...[/dim]")
+    console.print(Rule(f"[cyan]Stage 1: Scout Agent[/cyan] [dim]({provider})[/dim]"))
+    console.print("[dim]Deciding what to search and fetching posts...[/dim]")
 
-    with console.status("Scout Agent running..."):
-        posts = scout.run(topic)
+    search_topic = f"{topic} {'job opening hiring internship' if mode == 'jobs' else 'open problem'}"
+
+    with console.status(f"Scout Agent running via {provider}..."):
+        posts = scout.run(search_topic)
 
     if not posts:
         console.print("[red]Scout found nothing. Try a different topic.[/red]")
@@ -67,8 +81,8 @@ def main():
     console.print(f"Scout found [bold]{len(posts)}[/bold] posts.\n")
 
     # ── Stage 2: Analyst Agent ────────────────────────────────────────────────
-    console.print(Rule("[cyan]Stage 2: Analyst Agent[/cyan]"))
-    console.print("[dim]Scoring each post for fit and extracting the technical angle...[/dim]")
+    console.print(Rule(f"[cyan]Stage 2: Analyst Agent[/cyan] [dim]({provider})[/dim]"))
+    console.print("[dim]Scoring each result for fit and extracting the angle...[/dim]")
 
     results = []
     with console.status("Analyst Agent running..."):
@@ -83,7 +97,6 @@ def main():
         console.print("[yellow]No high-fit results (score >= 5). Try a more specific topic.[/yellow]")
         sys.exit(0)
 
-    # Show ranked results
     table = Table(show_header=True, header_style="bold magenta", expand=False)
     table.add_column("#", width=3)
     table.add_column("Fit", width=4)
@@ -111,13 +124,13 @@ def main():
 
     post, analysis = results[choice - 1]
 
-    console.print(f"\n[bold]Problem:[/bold] {analysis.get('problem', '')}")
-    console.print(f"[bold]Gap:[/bold] {analysis.get('gap', '')}")
+    console.print(f"\n[bold]Problem / Role:[/bold] {analysis.get('problem', '')}")
+    console.print(f"[bold]Gap / Need:[/bold] {analysis.get('gap', '')}")
     console.print(f"[bold]Your angle:[/bold] {analysis.get('contribution', '')}")
-    console.print(f"[dim]Reasoning: {analysis.get('reasoning', '')}[/dim]\n")
+    console.print(f"[dim]{analysis.get('reasoning', '')}[/dim]\n")
 
     # ── Stage 3: Strategist Agent ─────────────────────────────────────────────
-    console.print(Rule("[cyan]Stage 3: Strategist Agent[/cyan]"))
+    console.print(Rule(f"[cyan]Stage 3: Strategist Agent[/cyan] [dim]({provider})[/dim]"))
 
     with console.status("Strategist Agent deciding who to contact and how..."):
         strategy = strategist.run(post, analysis, profile)
@@ -126,13 +139,13 @@ def main():
         console.print("[red]Strategist failed. Try again.[/red]")
         sys.exit(1)
 
-    console.print(f"[bold]Target:[/bold] {strategy.get('target_role', '')}")
-    console.print(f"[bold]Hook:[/bold] {strategy.get('hook', '')}")
-    console.print(f"[bold]Channel:[/bold] {strategy.get('channel', '')}")
+    console.print(f"[bold]Target:[/bold]     {strategy.get('target_role', '')}")
+    console.print(f"[bold]Hook:[/bold]       {strategy.get('hook', '')}")
+    console.print(f"[bold]Channel:[/bold]    {strategy.get('channel', '')}")
     console.print(f"[bold]Icebreaker:[/bold] {strategy.get('icebreaker', '')}\n")
 
     # ── Stage 4: Writer Agent ─────────────────────────────────────────────────
-    console.print(Rule("[cyan]Stage 4: Writer Agent[/cyan]"))
+    console.print(Rule(f"[cyan]Stage 4: Writer Agent[/cyan] [dim]({provider})[/dim]"))
 
     with console.status("Writer Agent drafting the email..."):
         draft = writer.run(post, analysis, strategy, profile)
@@ -145,7 +158,7 @@ def main():
     ))
 
     if word_count > 200:
-        console.print(f"[yellow]Warning: {word_count} words — over the 200-word limit. Edit before sending.[/yellow]")
+        console.print(f"[yellow]Warning: {word_count} words — edit before sending.[/yellow]")
 
     # ── Stage 5: W&B Logging ──────────────────────────────────────────────────
     console.print(Rule("[cyan]Stage 5: W&B Tracker[/cyan]"))
@@ -160,11 +173,17 @@ def main():
     # ── Next steps ────────────────────────────────────────────────────────────
     console.print(Rule())
     console.print("[bold cyan]Next steps:[/bold cyan]")
-    console.print(f"  1. Find the right person at the company (engineer/researcher, not recruiter)")
-    console.print(f"  2. Edit the draft if needed — keep it under 200 words")
-    console.print(f"  3. Send from your school email or {strategy.get('channel', 'email')}")
-    console.print(f"  4. If no reply in 7 days, one LinkedIn follow-up")
-    console.print(f"  5. Update the W&B run when you get a reply\n")
+    if mode == "jobs":
+        console.print("  1. Find the hiring manager or a team engineer on LinkedIn (not the recruiter)")
+        console.print("  2. Edit the draft — keep it under 200 words")
+        console.print(f"  3. Send from your school email")
+        console.print("  4. If no reply in 7 days, one LinkedIn follow-up")
+        console.print("  5. Update the W&B run when you get a reply\n")
+    else:
+        console.print("  1. Find the researcher/engineer who posted (LinkedIn or GitHub)")
+        console.print("  2. Edit the draft — keep it under 200 words, stay specific")
+        console.print(f"  3. Send via {strategy.get('channel', 'email')}")
+        console.print("  4. One follow-up after 7 days if no reply\n")
 
 
 if __name__ == "__main__":

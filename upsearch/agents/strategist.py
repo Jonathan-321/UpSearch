@@ -3,11 +3,8 @@ Strategist Agent — given the analysis, decides exactly who to contact,
 what the outreach angle is, and which channel to use first.
 """
 import json
-import os
-import anthropic
 from upsearch.sourcing.base import Post
-
-client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+from upsearch import llm
 
 SYSTEM = """You are a Strategist Agent in a cold outreach research pipeline.
 
@@ -33,15 +30,7 @@ def run(post: Post, analysis: dict, user_profile: str) -> dict | None:
         f"Analysis:\n{json.dumps(analysis, indent=2)}\n\n"
         f"Student profile:\n{user_profile}"
     )
-
-    response = client.messages.create(
-        model="claude-opus-4-8",
-        max_tokens=384,
-        system=[{"type": "text", "text": SYSTEM, "cache_control": {"type": "ephemeral"}}],
-        messages=[{"role": "user", "content": payload}],
-    )
-
-    text = response.content[0].text.strip()
+    text = llm.complete(system=SYSTEM, user=payload, max_tokens=384)
     start, end = text.find("{"), text.rfind("}") + 1
     if start == -1 or end == 0:
         return None

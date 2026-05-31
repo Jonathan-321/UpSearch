@@ -1,14 +1,12 @@
 """
 Scout Agent — decides which sources and subreddits to search, then fetches posts.
-Uses tool use so Claude actively chooses what to search rather than searching everything blindly.
+Uses tool use so the model actively chooses what to search.
+Works with both Claude (Anthropic tool-use) and DeepSeek (OpenAI-compatible function calling).
 """
 import json
-import os
-import anthropic
 from upsearch.sourcing import reddit, hackernews
 from upsearch.sourcing.base import Post
-
-client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+from upsearch import llm
 
 SYSTEM = """You are a Scout Agent in a cold outreach research pipeline.
 
@@ -27,7 +25,7 @@ TOOLS = [
                 "subreddits": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "List of subreddit names to search. Pick from: MachineLearning, LocalLLaMA, mlops, compsci, programming, devops, artificial, datascience",
+                    "description": "Subreddit names to search. Pick from: MachineLearning, LocalLLaMA, mlops, compsci, programming, devops, artificial, datascience",
                 },
             },
             "required": ["query", "subreddits"],
@@ -47,7 +45,7 @@ TOOLS = [
 ]
 
 
-def _run_tool(name: str, inputs: dict) -> list[Post]:
+def _execute_tool(name: str, inputs: dict) -> list[Post]:
     if name == "search_reddit":
         return reddit.search(inputs["query"], subreddits=inputs.get("subreddits"), limit=6)
     if name == "search_hackernews":
@@ -55,38 +53,37 @@ def _run_tool(name: str, inputs: dict) -> list[Post]:
     return []
 
 
-def run(topic: str) -> list[Post]:
-    messages = [{"role": "user", "content": f"Topic to research: {topic}\n\nSearch for posts where engineers or researchers describe real problems they're stuck on related to this topic."}]
+def _run_claude(topic: str) -> list[Post]:
+    """Claude variant — uses Anthropic multi-turn tool-use loop."""
+    import anthropic
+    import os
 
+    client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+    messages = [{"role": "user", "content": f"Topic: {topic}\n\nSearch for posts where engineers or researchers describe real problems they are stuck on related to this topic."}]
     all_posts: list[Post] = []
-    seen_urls: set[str] = set()
+    seen: set[str] = set()
 
     while True:
         response = client.messages.create(
-            model="claude-opus-4-8",
+            model=llm.CLAUDE_MODEL,
             max_tokens=1024,
             system=[{"type": "text", "text": SYSTEM, "cache_control": {"type": "ephemeral"}}],
             tools=TOOLS,
             messages=messages,
         )
 
-        tool_calls = [b for b in response.content if b.type == "tool_use"]
-
-        if not tool_calls:
+        tool_blocks = [b for b in response.content if b.type == "tool_use"]
+        if not tool_blocks:
             break
 
         tool_results = []
-        for tc in tool_calls:
-            posts = _run_tool(tc.name, tc.input)
+        for tc in tool_blocks:
+            posts = _execute_tool(tc.name, tc.input)
             for p in posts:
-                if p.url not in seen_urls:
-                    seen_urls.add(p.url)
+                if p.url not in seen:
+                    seen.add(p.url)
                     all_posts.append(p)
-            tool_results.append({
-                "type": "tool_result",
-                "tool_use_id": tc.id,
-                "content": f"Returned {len(posts)} posts.",
-            })
+            tool_results.append({"type": "tool_result", "tool_use_id": tc.id, "content": f"Returned {len(posts)} posts."})
 
         messages.append({"role": "assistant", "content": response.content})
         messages.append({"role": "user", "content": tool_results})
@@ -95,3 +92,86 @@ def run(topic: str) -> list[Post]:
             break
 
     return all_posts
+
+
+def _run_deepseek(topic: str) -> list[Post]:
+    """DeepSeek variant — uses OpenAI-compatible function calling loop."""
+    from openai import OpenAI
+    import os
+
+    client = OpenAI(
+        api_key=os.environ.get("DEEPSEEK_API_KEY"),
+        base_url="https://api.deepseek.com/v1",
+    )
+
+    oai_tools = [
+        {
+            "type": "function",
+            "function": {
+                "name": t["name"],
+                "description": t["description"],
+                "parameters": t["input_schema"],
+            },
+        }
+        for t in TOOLS
+    ]
+
+    messages = [
+        {"role": "system", "content": SYSTEM},
+        {"role": "user", "content": f"Topic: {topic}\n\nSearch for posts where engineers or researchers describe real problems they are stuck on related to this topic."},
+    ]
+
+    all_posts: list[Post] = []
+    seen: set[str] = set()
+
+    for _ in range(4):  # max 4 rounds
+        response = client.chat.completions.create(
+            model=llm.DEEPSEEK_MODEL,
+            max_tokens=1024,
+            messages=messages,
+            tools=oai_tools,
+            tool_choice="auto",
+        )
+        choice = response.choices[0]
+
+        if not choice.message.tool_calls:
+            break
+
+        # Add assistant message
+        messages.append({
+            "role": "assistant",
+            "content": choice.message.content or "",
+            "tool_calls": [
+                {
+                    "id": tc.id,
+                    "type": "function",
+                    "function": {"name": tc.function.name, "arguments": tc.function.arguments},
+                }
+                for tc in choice.message.tool_calls
+            ],
+        })
+
+        # Execute tools and add results
+        for tc in choice.message.tool_calls:
+            inputs = json.loads(tc.function.arguments)
+            posts = _execute_tool(tc.function.name, inputs)
+            for p in posts:
+                if p.url not in seen:
+                    seen.add(p.url)
+                    all_posts.append(p)
+            messages.append({
+                "role": "tool",
+                "tool_call_id": tc.id,
+                "content": f"Returned {len(posts)} posts.",
+            })
+
+        if choice.finish_reason == "stop":
+            break
+
+    return all_posts
+
+
+def run(topic: str) -> list[Post]:
+    if llm.PROVIDER == "deepseek":
+        return _run_deepseek(topic)
+    return _run_claude(topic)

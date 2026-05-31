@@ -1,46 +1,39 @@
 """
-Writer Agent — drafts the cold email using the analyst and strategist outputs.
+Writer Agent — drafts the cold email.
+Works for both research outreach and job search outreach.
 Rules: ≤200 words, student voice, no dashes, no buzzwords, one icebreaker.
 """
-import os
-import anthropic
 from upsearch.sourcing.base import Post
-
-client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+from upsearch import llm
 
 SYSTEM = """You are a Writer Agent that drafts cold outreach emails for a CS student.
 
-Hard rules:
-- Subject line on the first line, then one blank line, then the email body
+This email may be for research collaboration OR for a job/internship — adapt the tone accordingly.
+For jobs: show genuine interest in the team's work, not just the role. Skip "I saw your job posting."
+For research: be curious, specific, and direct about what you want to learn or contribute.
+
+Hard rules for both:
+- Subject line on the first line, then one blank line, then the body
 - 200 words maximum for the body (not counting subject line)
-- Write like a human student: direct, specific, a little informal
-- No em-dashes, no en-dashes, no buzzwords ("leverage", "synergy", "excited to connect")
-- Open with the icebreaker — something specific they wrote or built, not a generic compliment
-- One clear, low-friction ask at the end (a 15-minute call, one specific question)
+- Write like a real student: direct, human, no corporate tone
+- No em-dashes, no en-dashes, no buzzwords
+- Open with the icebreaker — something specific to their actual work
+- One clear low-friction ask at the end (15-min call or one specific question)
 - Sign off with first name only
 
-The goal is a reply, not to impress. Specificity beats polish."""
+The goal is a reply. Specificity beats polish every time."""
 
 
 def run(post: Post, analysis: dict, strategy: dict, user_profile: str) -> str:
-    import json
-
     payload = (
         f"Post: {post.title}\nURL: {post.url}\n\n"
-        f"Technical analysis:\n- Problem: {analysis.get('problem', '')}\n"
+        f"Analysis:\n- Opportunity: {analysis.get('problem', '')}\n"
         f"- Gap: {analysis.get('gap', '')}\n"
-        f"- My angle: {analysis.get('contribution', '')}\n\n"
+        f"- My angle: {analysis.get('contribution', '')}\n"
+        f"- Contact type: {analysis.get('contact_type', '')}\n\n"
         f"Strategy:\n- Target: {strategy.get('target_role', '')}\n"
         f"- Hook: {strategy.get('hook', '')}\n"
         f"- Icebreaker: {strategy.get('icebreaker', '')}\n\n"
         f"Student profile:\n{user_profile}"
     )
-
-    response = client.messages.create(
-        model="claude-opus-4-8",
-        max_tokens=600,
-        system=[{"type": "text", "text": SYSTEM, "cache_control": {"type": "ephemeral"}}],
-        messages=[{"role": "user", "content": payload}],
-    )
-
-    return response.content[0].text.strip()
+    return llm.complete(system=SYSTEM, user=payload, max_tokens=600)
