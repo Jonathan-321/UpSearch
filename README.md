@@ -52,6 +52,12 @@ must be verified manually before you use them for outreach.
 - [Phase 1 build plan](docs/opportunity-intelligence/phase-1-build-plan.md)
 - [Component audit](docs/opportunity-intelligence/component-audit.md)
 
+## Presentation
+
+- [Editable 3-minute pitch deck](docs/presentation/upsearch-pitch-deck.html)
+- [Exported pitch deck PDF](docs/presentation/upsearch-pitch-deck.pdf)
+- [Speaker notes](docs/presentation/speaker-notes.md)
+
 ## Quick Start
 
 ### Requirements
