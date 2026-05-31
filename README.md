@@ -1,253 +1,314 @@
-# UpSearch
+# UpSearch — Opportunity Intelligence OS
 
-UpSearch is an AI-assisted research-to-reach pipeline for finding technical
-opportunities and turning them into focused outreach emails. It searches public
-signals from Reddit and Hacker News, ranks the results against a student
-profile, suggests an outreach strategy, drafts an email, evaluates each agent's
-output quality, and optionally logs the attempt to Weights and Biases.
+An AI-powered research-to-reach system for technical students and early-career builders. It runs two integrated workflows from a single codebase: a quick outreach search (UpSearch) and a full company packet builder (Opportunity OS).
 
-The repository contains:
+---
 
-- A working Python CLI that runs the full pipeline with live source and LLM calls.
-- A React and Vite frontend prototype that demonstrates the intended user experience with mock data. It is not connected to the Python pipeline yet.
+## What it does
 
-## Pipeline
+**Quick Search (UpSearch):** Type a topic or role. Four agents — Scout, Analyst, Strategist, Writer — run in sequence against live Reddit and HN data and produce a ready-to-send cold email. A Supervisor evaluates every stage. Results log to Weights and Biases.
 
-```text
-Topic or role
-    |
-    v
-Scout Agent
-    Searches Reddit and Hacker News for relevant public posts
-    |
-    v
-Supervisor (Scout evaluation)
-    Scores source relevance and post diversity
-    |
-    v
-Analyst Agent
-    Extracts the opportunity, scores fit from 1 to 10, identifies an angle
-    |
-    v
-Supervisor (Analyst evaluation)
-    Checks score calibration, result quality, and contact type accuracy
-    |
-    v
-User selection
-    Choose one of the highest-fit leads
-    |
-    v
-Strategist Agent
-    Recommends a target role, hook, channel, and icebreaker
-    |
-    v
-Supervisor (Strategist evaluation)
-    Checks icebreaker specificity and hook quality
-    |
-    v
-Writer Agent
-    Produces a direct outreach email with a 200-word body limit
-    |
-    v
-Supervisor (Writer evaluation)
-    Rule-based checks (word count, dashes, buzzwords) plus LLM tone review
-    |
-    v
-Supervisor Summary
-    Overall pipeline score, per-agent scores, and flag list
-    |
-    v
-W&B Tracker
-    Logs the lead, fit score, draft artifact, and all supervisor scores
-```
+**Opportunity OS:** Type a company name. Eight agents — Profile, Company, Problem, People, Technical Note, Outreach, QA, Action — build a full company packet: open problem brief, people map with LinkedIn links, one-page technical note, outreach variants for email and LinkedIn, and QA flags. Packets are stored in a local SQLite CRM. A live dashboard shows all companies, packet details, and a one-click approval queue.
 
-## Features
+---
 
-- Two modes: `jobs` for hiring signals and `research` for open problems.
-- Tool-guided scouting across Reddit and Hacker News.
-- Support for Anthropic Claude or DeepSeek via a single environment variable.
-- Structured handoffs between Scout, Analyst, Strategist, and Writer agents.
-- Supervisor agent that evaluates every stage and scores output quality 1 to 10.
-- Rule-based Writer checks (word count, em-dash detection, buzzword scan).
-- Per-agent and overall pipeline scores logged to W&B alongside the draft.
-- A local `profile.txt` file for tailoring the fit analysis and outreach draft.
-- A separate frontend prototype for exploring the planned browser workflow.
+## Quick start
 
-## Requirements
+### Requirements
 
 - Python 3.10 or newer
-- An Anthropic API key or a DeepSeek API key
-- A Weights and Biases API key
-- Node.js and npm only if you want to run the frontend prototype
+- Node.js 18 or newer
+- Anthropic API key or DeepSeek API key
+- Weights and Biases API key
 
-The source searchers use public Reddit JSON and Hacker News Algolia endpoints
-and do not require separate credentials.
-
-## CLI Setup
-
-1. Create and activate a virtual environment.
-
-   ```bash
-   python -m venv .venv
-   source .venv/bin/activate
-   ```
-
-   On Windows PowerShell:
-
-   ```powershell
-   python -m venv .venv
-   .\.venv\Scripts\Activate.ps1
-   ```
-
-2. Install the Python dependencies.
-
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. Create a `.env` file in the project root.
-
-   For Claude:
-
-   ```dotenv
-   MODEL_PROVIDER=claude
-   ANTHROPIC_API_KEY=your_anthropic_key
-   WANDB_API_KEY=your_wandb_key
-   ```
-
-   For DeepSeek:
-
-   ```dotenv
-   MODEL_PROVIDER=deepseek
-   DEEPSEEK_API_KEY=your_deepseek_key
-   WANDB_API_KEY=your_wandb_key
-   ```
-
-4. Edit `profile.txt` with your background, interests, and goals.
-
-## Run the CLI
-
-Start an interactive run:
+### Setup
 
 ```bash
-python main.py
+# 1. Install Python dependencies
+pip install -r requirements.txt
+
+# 2. Create .env in the project root
+MODEL_PROVIDER=deepseek          # or claude
+DEEPSEEK_API_KEY=your_key
+ANTHROPIC_API_KEY=your_key       # only needed if MODEL_PROVIDER=claude
+WANDB_API_KEY=your_key
+
+# 3. Edit profile.txt with your background, skills, and goals
+
+# 4. Install frontend dependencies
+cd frontend && npm install && cd ..
 ```
 
-Pass arguments directly to skip prompts:
+### Run
+
+```bash
+# Terminal 1 — API server (required for the frontend)
+uvicorn server:app --reload --port 8000
+
+# Terminal 2 — Frontend
+cd frontend && npm run dev
+# Opens at http://localhost:5180
+```
+
+The frontend opens in **Opportunity OS** mode by default. Toggle to **Quick Search** in the header.
+
+---
+
+## CLI usage
+
+### Quick Search (UpSearch)
 
 ```bash
 python main.py --mode jobs --topic "ML inference engineer internship"
 python main.py --mode research --topic "speculative decoding"
+python main.py --mode jobs --topic "LLM serving" --pick 1 --no-log
 ```
-
-Available options:
 
 | Option | Description |
 |---|---|
-| `--mode research` or `--mode jobs` | Select the pipeline mode |
-| `--topic "..."` | Provide the search topic or target role |
-| `--pick N` | Automatically select ranked result number N |
-| `--no-log` | Skip the W&B logging prompt |
-| `--no-supervise` | Skip all Supervisor evaluations (faster, fewer LLM calls) |
+| `--mode jobs` or `--mode research` | Pipeline mode |
+| `--topic "..."` | Search topic or target role |
+| `--pick N` | Auto-select result N (skips prompt) |
+| `--no-log` | Skip W&B logging prompt |
+| `--no-supervise` | Skip Supervisor evaluations (faster) |
 
-## Supervisor Agent
-
-After each pipeline stage the Supervisor evaluates the agent's output and
-assigns a score from 1 to 10. A score below 6 is flagged as a failure.
-
-| Agent | What the Supervisor checks |
-|---|---|
-| Scout | On-topic posts, source diversity, result count |
-| Analyst | Score calibration, specificity of problem and contribution, contact type accuracy |
-| Strategist | Icebreaker specificity, hook quality, channel appropriateness |
-| Writer | Word count (rule-based), em-dash and buzzword scan (rule-based), tone and ask quality (LLM) |
-
-At the end of the pipeline a summary table shows all four scores, any flags,
-and an overall average. Everything is logged to W&B as numeric metrics so you
-can compare runs over time.
-
-Run without the Supervisor when you want faster output or want to save LLM tokens:
+### Opportunity OS
 
 ```bash
-python main.py --mode jobs --topic "your topic" --no-supervise
+# Build a full company packet
+python os_main.py packet --company Baseten --lane ai_infra
+
+# List all companies in the CRM
+python os_main.py list
+
+# Show a specific packet
+python os_main.py show --company Together
+
+# Review and approve pending outreach drafts
+python os_main.py approve
+
+# CRM overview and due follow-ups
+python os_main.py crm
 ```
 
-## Frontend Prototype
+Available lanes: `ai_infra`, `inference`, `agentic`, `dev_tools`, `data`, `robotics`
 
-The `frontend/` directory contains a Vite-powered React prototype of the
-planned browser interface. It simulates the pipeline with delays and mock
-opportunities from `frontend/src/mockData.ts`.
+---
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
+## Architecture
 
-## Outreach Rules
-
-The Writer agent is prompted to follow these constraints:
-
-- Keep the email body at or below 200 words.
-- Open with an icebreaker tied to the recipient's actual work.
-- Use a student voice without corporate buzzwords.
-- Avoid em dashes and en dashes.
-- End with one low-friction ask such as a 15-minute call or one question.
-
-The Supervisor enforces word count, dash usage, and buzzword presence
-automatically using rule-based checks before the LLM quality review.
-
-## Project Structure
+### Quick Search pipeline
 
 ```text
-UpSearch/
-|-- main.py                     # CLI orchestrator
-|-- profile.txt                 # Student background used by the agents
-|-- requirements.txt            # Python dependencies
-|-- .env                        # Local API keys, ignored by git
-|-- upsearch/
-|   |-- llm.py                  # Claude and DeepSeek routing
-|   |-- supervisor.py           # Per-agent quality evaluator and pipeline summary
-|   |-- tracker.py              # W&B experiment logging with supervisor scores
-|   |-- agents/
-|   |   |-- scout.py            # Searches public sources through tool use
-|   |   |-- analyst.py          # Scores fit and extracts an outreach angle
-|   |   |-- strategist.py       # Selects target, hook, channel, and icebreaker
-|   |   `-- writer.py           # Drafts the outreach email
-|   `-- sourcing/
-|       |-- base.py             # Shared Post dataclass
-|       |-- reddit.py           # Reddit JSON search client
-|       `-- hackernews.py       # Hacker News Algolia search client
-`-- frontend/
-    |-- package.json            # Vite scripts and frontend dependencies
-    `-- src/
-        |-- App.tsx             # Prototype interface
-        |-- hooks/usePipeline.ts# Mock pipeline state and delays
-        `-- mockData.ts         # Demo opportunities, strategy, and W&B runs
+Topic or role
+    |
+Scout Agent           Searches Reddit and HN via tool use
+    |
+Supervisor            Scores source relevance and diversity
+    |
+Analyst Agent         Fits posts to user profile, scores 1-10
+    |
+Supervisor            Checks score calibration and contact type
+    |
+User selects a lead
+    |
+Strategist Agent      Picks target role, hook, channel, icebreaker
+    |
+Supervisor            Checks icebreaker specificity and hook quality
+    |
+Writer Agent          Drafts cold email, max 200 words
+    |
+Supervisor            Word count, em-dash, buzzword, tone checks
+    |
+W&B Tracker           Logs run, scores, and draft artifact
 ```
 
-## W&B Metrics
+### Opportunity OS pipeline
 
-Each logged run includes:
+```text
+Company name + lane
+    |
+Profile Agent         Parses profile.txt into a structured technical map
+    |
+Company Agent         Researches fit, tech stack, hiring signal, open source
+    |
+Problem Agent         Extracts open technical problems from public sources
+    |
+People Agent          Finds and ranks relevant people by proximity to problem
+    |
+Technical Note Agent  Writes a one-page problem brief with contribution idea
+    |
+Outreach Agent        Drafts email, LinkedIn note, and connection follow-up
+    |
+QA Agent              Checks claims, sources, word count, tone, and fabrication
+    |
+Action Agent          Surfaces drafts for approval — never sends autonomously
+    |
+SQLite CRM            Stores company, problems, people, packet, and messages
+W&B Tracker           Logs packet, QA scores, and supervisor metrics
+```
+
+---
+
+## Agents
+
+### Quick Search agents
+
+| Agent | What it does |
+|---|---|
+| Scout | Searches Reddit and HN using Claude or DeepSeek tool use. Picks subreddits and queries. |
+| Analyst | Scores each post for fit 1-10. Extracts problem, gap, and contribution angle. |
+| Strategist | Decides who to contact, what hook to use, which channel, and what icebreaker. |
+| Writer | Drafts a cold email under 200 words in student voice. No dashes or buzzwords. |
+| Supervisor | Runs after every stage. Scores quality 1-10. Flags specific issues. |
+
+### Opportunity OS agents
+
+| Agent | What it does |
+|---|---|
+| Profile | Extracts technical map, skills, coursework, and proof points from profile.txt. |
+| Company | Researches company: product, tech stack, fit score, hiring status, open source. |
+| Problem | Finds real open problems from HN, Reddit, GitHub, and blog signal. |
+| People | Maps 3-6 relevant people by proximity to the problem, with public profile links. |
+| Technical Note | Writes a one-page problem brief: landscape, contribution idea, evaluation approach. |
+| Outreach | Drafts email, LinkedIn connection note, and post-connection follow-up. |
+| QA | Rule-based and LLM checks: word count, em-dashes, fabricated claims, generic icebreakers, missing sources. |
+| Action | Surfaces drafts for human approval. Never sends autonomously. Records outcomes. |
+
+---
+
+## Outreach rules (enforced in every draft)
+
+- Email body: 200 words maximum.
+- Open with an icebreaker specific to the recipient's actual work, not a generic compliment.
+- Student voice: direct, human, no corporate phrasing.
+- No em dashes or en dashes.
+- No buzzwords: leverage, synergy, excited to connect, touch base.
+- One low-friction ask at the end: a 15-minute call or one specific question.
+- No fabricated experience: use "studying", "working through", or "prototyping", not "I built" or "I deployed".
+
+The QA Agent enforces these automatically and flags violations before any draft reaches the approval queue.
+
+---
+
+## Frontend
+
+Two modes in one interface, toggled from the header.
+
+**Quick Search mode:** Search panel, 4-stage pipeline stepper with live status, opportunity cards ranked by fit, strategy panel, editable email draft, Supervisor scores panel, W&B tracker table.
+
+**Opportunity OS mode:** Company input with lane selector, 7-stage pipeline stepper updating via SSE as each agent completes, two-column layout with Company CRM on the left and packet detail on the right, approval queue below with Approve / Skip / Copy per draft.
+
+---
+
+## Model routing
+
+Both pipelines support Claude and DeepSeek. Switch with one line in `.env`.
+
+```dotenv
+MODEL_PROVIDER=deepseek   # fast, cost-effective, OpenAI-compatible
+MODEL_PROVIDER=claude     # claude-opus-4-8, with prompt caching
+```
+
+The Scout agent has separate implementations for each provider since tool-use APIs differ. All other agents use a shared `llm.complete()` wrapper.
+
+---
+
+## W&B metrics
+
+Every logged Quick Search run includes:
 
 | Metric | Description |
 |---|---|
 | `fit_score` | Analyst fit score for the selected lead |
-| `word_count` | Word count of the draft body |
-| `sent` | Whether the email was marked as sent |
-| `supervisor_overall_score` | Average score across all four agents |
-| `supervisor_scout_score` | Scout evaluation score |
-| `supervisor_analyst_score` | Analyst evaluation score |
-| `supervisor_strategist_score` | Strategist evaluation score |
-| `supervisor_writer_score` | Writer evaluation score |
+| `word_count` | Draft word count |
+| `sent` | Whether the email was marked sent |
+| `supervisor_overall_score` | Average across all four supervisor evaluations |
+| `supervisor_scout_score` | Scout evaluation |
+| `supervisor_analyst_score` | Analyst evaluation |
+| `supervisor_strategist_score` | Strategist evaluation |
+| `supervisor_writer_score` | Writer evaluation |
 
-A `supervisor_report.json` artifact is attached to every logged run containing
-the full flag list and per-agent reasoning.
+A `supervisor_report.json` artifact is attached to every run with the full flag list and per-agent reasoning.
 
-## Current Limitations
+---
 
-- The frontend does not call a backend API yet.
-- The frontend filters do not affect the mocked results yet.
-- Reply status updates after logging are currently managed in W&B directly.
-- The Supervisor adds two to four extra LLM calls per run. Use `--no-supervise`
-  to skip them when speed matters.
+## Project structure
+
+```text
+UpSearch/
+|-- main.py                      # Quick Search CLI
+|-- os_main.py                   # Opportunity OS CLI
+|-- server.py                    # Unified FastAPI server (/api/* + /os/*)
+|-- db.py                        # SQLite CRM schema and query helpers
+|-- orchestrator.py              # OS task graph and agent dispatch
+|-- profile.txt                  # User background (edit this)
+|-- requirements.txt
+|-- .env                         # API keys (gitignored)
+|-- opportunity_os.db            # SQLite CRM (gitignored)
+|
+|-- agents/                      # Opportunity OS agents
+|   |-- profile.py
+|   |-- company.py
+|   |-- problem.py
+|   |-- people.py
+|   |-- technical_note.py
+|   |-- outreach.py
+|   |-- qa.py
+|   `-- action.py
+|
+|-- upsearch/                    # Quick Search agents and sourcing
+|   |-- llm.py                   # Claude and DeepSeek routing
+|   |-- supervisor.py            # Per-agent quality evaluator
+|   |-- tracker.py               # W&B logging
+|   |-- agents/
+|   |   |-- scout.py
+|   |   |-- analyst.py
+|   |   |-- strategist.py
+|   |   `-- writer.py
+|   `-- sourcing/
+|       |-- base.py
+|       |-- reddit.py
+|       `-- hackernews.py
+|
+|-- packets/                     # Reference company packets (P0)
+|   `-- baseten/
+|       |-- packet.json
+|       |-- technical_note.md
+|       `-- outreach/
+|           |-- email.md
+|           `-- linkedin_note.md
+|
+`-- frontend/
+    |-- src/
+    |   |-- App.tsx              # Root with Quick Search / OS mode toggle
+    |   |-- hooks/
+    |   |   |-- usePipeline.ts   # Quick Search state + API calls
+    |   |   `-- useOS.ts         # OS state + SSE streaming + CRM calls
+    |   `-- components/
+    |       |-- SearchPanel.tsx
+    |       |-- PipelineStepper.tsx
+    |       |-- AgentCard.tsx
+    |       |-- OpportunityCard.tsx
+    |       |-- StrategyPanel.tsx
+    |       |-- EmailDraftPanel.tsx
+    |       |-- SupervisorPanel.tsx
+    |       |-- WandbTrackerPanel.tsx
+    |       |-- OSSearchPanel.tsx
+    |       |-- OSPipelineStepper.tsx
+    |       |-- CRMTable.tsx
+    |       |-- PacketView.tsx
+    |       `-- ApprovalQueue.tsx
+    `-- package.json
+```
+
+---
+
+## Operating principles
+
+- Action over confusion. If a draft is ready, show it. Do not wait for perfect research.
+- Never send autonomously. Every external message requires explicit user approval.
+- No fabricated experience. Agents use "studying" and "prototyping", not "I built" or "I deployed".
+- No uncontrolled mass outreach. Targeted, specific, and human.
+- QA before approval. Every draft passes a rule-based and LLM quality check first.
+- Track everything. W&B logs let you iterate on what actually gets replies.
