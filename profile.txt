@@ -1,0 +1,17 @@
+Name: Luis Mendez
+School: University of Connecticut (UConn)
+Major: Computer Science
+Status: Undergraduate student
+
+Background:
+- ML coursework: AI (CSE 4705), Convex Optimization (CSE 4820)
+- Systems coursework: Operating Systems, Computer Organization
+- Comfortable with Python, some Go exposure
+- Interested in: ML inference, LLM systems, distributed systems, applied AI research
+
+Looking for:
+- Research internships
+- Engineering roles at companies working on hard ML/systems problems
+- Short-term collaboration or mentorship on open problems
+
+Tone: Direct, curious, not trying to oversell. Happy to learn on the fly.

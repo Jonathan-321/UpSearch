@@ -1,55 +1,61 @@
 # UpSearch
 
-AI-powered research-to-reach pipeline for identifying open technical problems and executing targeted cold outreach to the teams working on them.
+AI-powered research-to-reach pipeline. Turns public signal (Reddit, HN) into targeted cold outreach to engineers and researchers working on real open problems.
 
 ---
 
-## What it does
+## Judging Criteria — How UpSearch Addresses Each
 
-UpSearch turns public signal (LinkedIn, Reddit, Hacker News, papers, job posts) into structured intelligence about what problems real teams are actively trying to solve, then helps you draft and send precise, human cold outreach to the right people.
-
-**Core loop:**
-
-```
-Source → Analyze → Position → Draft → Send → Track
-```
-
-1. **Source** — Surface companies and open problems from LinkedIn, Reddit (r/MachineLearning, r/compsci, etc.), Hacker News "Who's Hiring" / "Ask HN", arXiv, and GitHub issues.
-2. **Analyze** — Write a tight technical note: what the problem is, where existing solutions fall short, what you can contribute given current open-source tooling or research.
-3. **Position** — Hint at analogous work you've done (or studied) to frame credibility without overstating experience.
-4. **Draft** — Generate a ≤200-word cold email written like a human student: clear, direct, no dashes, no jargon, one quirky icebreaker if the context warrants it.
-5. **Send** — Browser automation (Copilot Tandem) dispatches emails and LinkedIn DMs across configured accounts.
-6. **Track** — W&B logs every outreach attempt: who was contacted, which angle was used, open/reply rates, what worked.
+| Criterion | How |
+|---|---|
+| **Agent Orchestration** | Four specialized agents (Scout, Analyst, Strategist, Writer) run in sequence, each consuming the prior agent's structured output |
+| **Utility** | Solves a real student problem: finding the right people working on the right problems and reaching them with a credible, specific message |
+| **Technical Execution** | Tool-use Scout Agent, prompt-cached Claude Opus 4.8 calls, structured JSON handoffs between agents, W&B experiment tracking |
+| **Creativity** | Reframes cold outreach as a research pipeline — signal-first, then contact — instead of shotgun emailing |
+| **Sponsor Usage** | W&B tracks every outreach attempt as an experiment: fit score, draft artifact, sent/reply status, iterable over time |
 
 ---
 
-## Architecture
+## Agent Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                        UpSearch                             │
-│                                                             │
-│  ┌────────────┐    ┌─────────────┐    ┌──────────────────┐ │
-│  │  Sourcing  │───▶│  Analyzer   │───▶│  Draft Engine    │ │
-│  │  Layer     │    │  (Claude    │    │  (Claude         │ │
-│  │            │    │  Opus 4.8)  │    │  Opus 4.8)       │ │
-│  │ - LinkedIn │    │             │    │                  │ │
-│  │ - Reddit   │    │ - Problem   │    │ - Email (≤200w)  │ │
-│  │ - HN       │    │   summary   │    │ - LinkedIn DM    │ │
-│  │ - arXiv    │    │ - Tech note │    │ - Human tone     │ │
-│  │ - GitHub   │    │ - Fit score │    │ - Icebreaker     │ │
-│  └────────────┘    └─────────────┘    └────────┬─────────┘ │
-│                                                 │           │
-│  ┌──────────────────────────────────────────────▼─────────┐ │
-│  │                  Send Layer                             │ │
-│  │     Copilot Tandem Browser (Email / LinkedIn / X)      │ │
-│  └──────────────────────────────────────────────┬─────────┘ │
-│                                                 │           │
-│  ┌──────────────────────────────────────────────▼─────────┐ │
-│  │              Tracking (W&B)                             │ │
-│  │  - Contact log  - Angle used  - Reply rate  - Wins     │ │
-│  └────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────┘
+User Input (topic)
+       │
+       ▼
+┌─────────────────────────────────────────┐
+│  Scout Agent  (Claude Opus 4.8 + tools) │
+│  Decides what to search, calls Reddit   │
+│  and HN APIs via tool use, returns      │
+│  a ranked list of raw posts             │
+└──────────────────────┬──────────────────┘
+                       │  posts[]
+                       ▼
+┌─────────────────────────────────────────┐
+│  Analyst Agent  (Claude Opus 4.8)       │
+│  Reads each post, scores fit (1-10),    │
+│  extracts: problem, gap, contribution   │
+└──────────────────────┬──────────────────┘
+                       │  analysis{}  (user picks one)
+                       ▼
+┌─────────────────────────────────────────┐
+│  Strategist Agent  (Claude Opus 4.8)    │
+│  Decides: who to contact, what hook     │
+│  to use, which channel, icebreaker      │
+└──────────────────────┬──────────────────┘
+                       │  strategy{}
+                       ▼
+┌─────────────────────────────────────────┐
+│  Writer Agent  (Claude Opus 4.8)        │
+│  Drafts ≤200-word cold email            │
+│  Student voice, no dashes, one ask      │
+└──────────────────────┬──────────────────┘
+                       │  draft (text)
+                       ▼
+┌─────────────────────────────────────────┐
+│  W&B Tracker                            │
+│  Logs run config, fit score, draft      │
+│  artifact. Reply/sent updated manually. │
+└─────────────────────────────────────────┘
 ```
 
 ---
@@ -58,38 +64,58 @@ Source → Analyze → Position → Draft → Send → Track
 
 | Layer | Tool |
 |---|---|
-| Intelligence / writing | Claude Opus 4.8 (`claude-opus-4-8`) |
+| All agents | Claude Opus 4.8 (`claude-opus-4-8`) via Anthropic SDK |
+| Scout sourcing | Reddit JSON API + HN Algolia API (no auth required) |
 | Experiment tracking | [Weights & Biases](https://wandb.ai/home) |
-| Browser automation | Copilot Tandem Browser |
-| Outreach channels | School email, LinkedIn, X |
-| Runtime | Python 3.11+ |
+| Outreach channels | School email (primary), LinkedIn, X |
+| CLI | Python + Rich |
 
 ---
 
-## Guiding principles
+## Setup
 
-- **Action over analysis** — if you can write a draft, write it. Don't wait for perfect research.
-- **≤200 words per email** — every word must earn its place.
-- **Write like a student** — no dashes, no corporate tone, no AI-sounding phrasing.
-- **Precision beats volume** — one well-researched, well-positioned email beats ten generic ones.
-- **Track everything** — W&B logs let you iterate on what actually gets replies.
+```bash
+# 1. Install dependencies
+pip install -r requirements.txt
 
----
+# 2. Add your Anthropic API key to .env
+ANTHROPIC_API_KEY=your_key_here
+WANDB_API_KEY=your_wandb_key_here   # already set
 
-## Recommended outreach flow
+# 3. Edit profile.txt with your actual background
 
-```
-1. Find a company/team working on problem X
-2. Read their recent work (papers, talks, GitHub, HN posts)
-3. Write a 3-sentence technical note: problem → gap → your angle
-4. Pick the person (engineer or researcher, not recruiter)
-5. Draft email with UpSearch → review → send via school email
-6. If no reply in 7 days → one LinkedIn follow-up
-7. Log result in W&B
+# 4. Run
+python main.py
 ```
 
 ---
 
-## Status
+## Outreach rules (baked into every agent)
 
-Early-stage scaffold. Sourcing and draft engine in progress.
+- Email body: **200 words max**
+- No em-dashes, no en-dashes, no buzzwords
+- Open with a specific icebreaker tied to their actual work
+- One low-friction ask at the end (15-min call or one question)
+- Log everything to W&B — iterate on what gets replies
+
+---
+
+## File structure
+
+```
+UpSearch/
+├── main.py              # Orchestrator — runs all four agents in sequence
+├── profile.txt          # Your background (edit this)
+├── requirements.txt
+├── .env                 # API keys (gitignored)
+└── upsearch/
+    ├── agents/
+    │   ├── scout.py     # Stage 1 — tool-use search agent
+    │   ├── analyst.py   # Stage 2 — technical note + fit score
+    │   ├── strategist.py# Stage 3 — who/hook/channel/icebreaker
+    │   └── writer.py    # Stage 4 — cold email draft
+    ├── sourcing/
+    │   ├── reddit.py    # Reddit JSON API
+    │   └── hackernews.py# HN Algolia API
+    └── tracker.py       # W&B logging
+```
