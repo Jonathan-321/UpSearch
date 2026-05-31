@@ -12,7 +12,7 @@ The project includes two workflows in one frontend:
   packet, store it in a local SQLite CRM, and review outreach variants before
   approval.
 
-![UpSearch architecture](docs/assets/upsearch-architecture-v3.svg)
+![UpSearch architecture](docs/assets/upsearch-architecture-clean.svg)
 
 ## Features
 
@@ -270,7 +270,8 @@ UpSearch/
 |   `-- assets/
 |       |-- upsearch-architecture.png
 |       |-- upsearch-architecture-v2.png
-|       `-- upsearch-architecture-v3.svg
+|       |-- upsearch-architecture-v3.svg
+|       `-- upsearch-architecture-clean.svg
 |
 `-- frontend/
     |-- src/

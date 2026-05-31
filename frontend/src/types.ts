@@ -75,3 +75,13 @@ export interface WandbRun {
 export type FilterKey = 'reddit' | 'hackernews' | 'engineers' | 'researchers' | 'startups' | 'academia';
 
 export const API_BASE = 'http://localhost:8000/api';
+
+export type LogLevel = 'STARTED' | 'SOURCE' | 'INFO' | 'COMPLETE' | 'ERROR'
+
+export interface LogEntry {
+  ts: string
+  agent: string
+  level: LogLevel
+  message: string
+  elapsed?: string
+}
