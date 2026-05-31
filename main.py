@@ -36,7 +36,7 @@ def load_profile() -> str:
     return "CS student interested in ML and systems, looking for internships and research roles."
 
 
-def check_env():
+def check_env(require_wandb: bool = True):
     provider = llm.active_provider()
     if provider == "deepseek" and not os.environ.get("DEEPSEEK_API_KEY"):
         console.print("[red]Missing DEEPSEEK_API_KEY in .env[/red]")
@@ -44,7 +44,7 @@ def check_env():
     if provider == "claude" and not os.environ.get("ANTHROPIC_API_KEY"):
         console.print("[red]Missing ANTHROPIC_API_KEY in .env[/red]")
         sys.exit(1)
-    if not os.environ.get("WANDB_API_KEY"):
+    if require_wandb and not os.environ.get("WANDB_API_KEY"):
         console.print("[red]Missing WANDB_API_KEY in .env[/red]")
         sys.exit(1)
 
@@ -119,7 +119,7 @@ def main():
         expand=False,
     ))
 
-    check_env()
+    check_env(require_wandb=not args.no_log)
     profile = load_profile()
 
     mode = args.mode or input("\nMode [research/jobs] (default: jobs): ").strip() or "jobs"
