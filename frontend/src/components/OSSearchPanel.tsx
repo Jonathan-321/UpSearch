@@ -27,10 +27,10 @@ export default function OSSearchPanel({ onBuild, isRunning }: Props) {
   }
 
   return (
-    <section className="panel panel-raised p-5 sm:p-6 space-y-4">
-      <div>
-        <p className="workspace-label">New Research Packet</p>
-        <h2 className="text-section mt-1">Choose a company to investigate</h2>
+    <section className="studio-command">
+      <div className="studio-command-copy">
+        <p>New packet</p>
+        <h2>Choose a company to investigate</h2>
       </div>
 
       <form onSubmit={submit} className="space-y-3">
@@ -41,23 +41,23 @@ export default function OSSearchPanel({ onBuild, isRunning }: Props) {
             onChange={e => setCompany(e.target.value)}
             placeholder="Company name, e.g. Baseten"
             disabled={isRunning}
-            className="input"
+            className="studio-input"
             aria-label="Company name"
           />
           <select value={lane} onChange={e => setLane(e.target.value)} disabled={isRunning}
-            className="input cursor-pointer" aria-label="Opportunity lane">
+            className="studio-input cursor-pointer" aria-label="Opportunity lane">
             {LANES.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
           </select>
-          <button type="submit" disabled={!company.trim() || isRunning} className="btn btn-primary whitespace-nowrap">
+          <button type="submit" disabled={!company.trim() || isRunning} className="studio-primary-action">
             {isRunning ? 'Building packet...' : 'Build packet'}
           </button>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-meta">Quick add:</span>
+          <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8a867d]">Quick add</span>
           {SUGGESTIONS.map(item => (
             <button key={item} type="button" onClick={() => setCompany(item)}
-              className="btn btn-ghost !px-2.5 !py-1 !text-xs">
+              className="studio-suggestion">
               {item}
             </button>
           ))}

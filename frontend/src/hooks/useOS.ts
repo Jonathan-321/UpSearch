@@ -154,8 +154,9 @@ export function useOS() {
     })
 
     es.addEventListener('error', (e: MessageEvent) => {
+      if (!e.data) return
       try {
-        const d = JSON.parse((e as MessageEvent).data)
+        const d = JSON.parse(e.data)
         setError(d.error)
       } catch {
         setError('Pipeline error — check the server.')
@@ -165,7 +166,7 @@ export function useOS() {
     })
 
     es.onerror = () => {
-      if (es.readyState === EventSource.CLOSED) return
+      if (es.readyState !== EventSource.CLOSED) return
       setError('Connection to server lost. Is uvicorn running on port 8000?')
       setRunning(false)
       es.close()

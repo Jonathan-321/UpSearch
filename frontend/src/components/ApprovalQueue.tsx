@@ -13,11 +13,11 @@ export default function ApprovalQueue({ messages, onApprove }: Props) {
   const visible = messages.filter(message => !dismissed.has(message.id) && message.content?.trim())
 
   return (
-    <section className="panel overflow-hidden">
-      <header className="px-5 py-4 border-b border-border flex items-center justify-between gap-3">
+    <section className="studio-desk-card">
+      <header className="flex items-center justify-between gap-3 border-b border-[#dedbd2] px-5 py-4">
         <div>
-          <p className="workspace-label">Human Review</p>
-          <h2 className="text-section mt-1">Approval queue</h2>
+          <p className="studio-kicker">Human review</p>
+          <h2 className="mt-1 text-xl font-semibold text-[#161616]">Approval queue</h2>
         </div>
         <span className={`badge ${visible.length > 0 ? 'badge-warning' : 'badge-success'}`}>
           {visible.length > 0 ? `${visible.length} pending` : 'All clear'}
@@ -26,11 +26,11 @@ export default function ApprovalQueue({ messages, onApprove }: Props) {
 
       {visible.length === 0 ? (
         <div className="px-5 py-8 text-center">
-          <p className="text-sm text-text-2">No outreach drafts are waiting for review.</p>
-          <p className="text-xs text-text-3 mt-1">Build a packet to generate a review queue.</p>
+          <p className="text-sm text-[#565248]">No outreach drafts are waiting for review.</p>
+          <p className="mt-1 text-xs text-[#8a867d]">Build a packet to generate a review queue.</p>
         </div>
       ) : (
-        <div className="divide-y divide-border">
+        <div className="divide-y divide-[#dedbd2]">
           {visible.map(message => {
             const words = message.word_count ?? message.content.split(/\s+/).filter(Boolean).length
             const over = words > 200
@@ -44,7 +44,7 @@ export default function ApprovalQueue({ messages, onApprove }: Props) {
                   <span className={`badge font-mono ${over ? 'badge-error' : ''}`}>{words}w</span>
                 </div>
 
-                <pre className="font-mono text-sm text-text-2 leading-relaxed whitespace-pre-wrap panel panel-raised p-4 mt-4 max-h-64 overflow-y-auto">
+                <pre className="mt-4 max-h-64 overflow-y-auto rounded-xl border border-[#dedbd2] bg-white p-4 font-mono text-sm leading-relaxed text-[#35322c] whitespace-pre-wrap">
                   {message.content}
                 </pre>
 
