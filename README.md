@@ -3,15 +3,13 @@
 UpSearch is an AI-assisted research-to-reach pipeline for finding technical
 opportunities and turning them into focused outreach emails. It searches public
 signals from Reddit and Hacker News, ranks the results against a student
-profile, suggests an outreach strategy, drafts an email, and optionally logs the
-attempt to Weights & Biases.
+profile, suggests an outreach strategy, drafts an email, evaluates each agent's
+output quality, and optionally logs the attempt to Weights and Biases.
 
-The repository currently contains:
+The repository contains:
 
-- A working Python CLI that runs the full pipeline with live source and LLM
-  calls.
-- A React and Vite frontend prototype that demonstrates the intended user
-  experience with mock data. It is not connected to the Python pipeline yet.
+- A working Python CLI that runs the full pipeline with live source and LLM calls.
+- A React and Vite frontend prototype that demonstrates the intended user experience with mock data. It is not connected to the Python pipeline yet.
 
 ## Pipeline
 
@@ -23,8 +21,16 @@ Scout Agent
     Searches Reddit and Hacker News for relevant public posts
     |
     v
+Supervisor (Scout evaluation)
+    Scores source relevance and post diversity
+    |
+    v
 Analyst Agent
-    Extracts the opportunity, scores fit from 1 to 10, and identifies an angle
+    Extracts the opportunity, scores fit from 1 to 10, identifies an angle
+    |
+    v
+Supervisor (Analyst evaluation)
+    Checks score calibration, result quality, and contact type accuracy
     |
     v
 User selection
@@ -35,33 +41,47 @@ Strategist Agent
     Recommends a target role, hook, channel, and icebreaker
     |
     v
+Supervisor (Strategist evaluation)
+    Checks icebreaker specificity and hook quality
+    |
+    v
 Writer Agent
     Produces a direct outreach email with a 200-word body limit
     |
     v
+Supervisor (Writer evaluation)
+    Rule-based checks (word count, dashes, buzzwords) plus LLM tone review
+    |
+    v
+Supervisor Summary
+    Overall pipeline score, per-agent scores, and flag list
+    |
+    v
 W&B Tracker
-    Optionally logs the lead, fit score, status, and draft artifact
+    Logs the lead, fit score, draft artifact, and all supervisor scores
 ```
 
 ## Features
 
 - Two modes: `jobs` for hiring signals and `research` for open problems.
 - Tool-guided scouting across Reddit and Hacker News.
-- Support for Anthropic Claude or DeepSeek through an environment variable.
+- Support for Anthropic Claude or DeepSeek via a single environment variable.
 - Structured handoffs between Scout, Analyst, Strategist, and Writer agents.
+- Supervisor agent that evaluates every stage and scores output quality 1 to 10.
+- Rule-based Writer checks (word count, em-dash detection, buzzword scan).
+- Per-agent and overall pipeline scores logged to W&B alongside the draft.
 - A local `profile.txt` file for tailoring the fit analysis and outreach draft.
-- Optional W&B logging for outreach experiments and draft artifacts.
 - A separate frontend prototype for exploring the planned browser workflow.
 
 ## Requirements
 
 - Python 3.10 or newer
 - An Anthropic API key or a DeepSeek API key
-- A Weights & Biases API key
+- A Weights and Biases API key
 - Node.js and npm only if you want to run the frontend prototype
 
-The source searchers use public Reddit JSON and Hacker News Algolia endpoints,
-so they do not require separate credentials.
+The source searchers use public Reddit JSON and Hacker News Algolia endpoints
+and do not require separate credentials.
 
 ## CLI Setup
 
@@ -103,8 +123,7 @@ so they do not require separate credentials.
    WANDB_API_KEY=your_wandb_key
    ```
 
-4. Edit `profile.txt` with the background, interests, and goals that the agents
-   should use when scoring leads and writing outreach.
+4. Edit `profile.txt` with your background, interests, and goals.
 
 ## Run the CLI
 
@@ -114,7 +133,7 @@ Start an interactive run:
 python main.py
 ```
 
-Or pass the mode and topic directly:
+Pass arguments directly to skip prompts:
 
 ```bash
 python main.py --mode jobs --topic "ML inference engineer internship"
@@ -127,20 +146,37 @@ Available options:
 |---|---|
 | `--mode research` or `--mode jobs` | Select the pipeline mode |
 | `--topic "..."` | Provide the search topic or target role |
-| `--pick N` | Automatically choose ranked result number `N` |
-| `--no-log` | Skip the W&B logging prompt after generating the draft |
+| `--pick N` | Automatically select ranked result number N |
+| `--no-log` | Skip the W&B logging prompt |
+| `--no-supervise` | Skip all Supervisor evaluations (faster, fewer LLM calls) |
 
-Note: the current CLI validates `WANDB_API_KEY` at startup even when
-`--no-log` is used.
+## Supervisor Agent
+
+After each pipeline stage the Supervisor evaluates the agent's output and
+assigns a score from 1 to 10. A score below 6 is flagged as a failure.
+
+| Agent | What the Supervisor checks |
+|---|---|
+| Scout | On-topic posts, source diversity, result count |
+| Analyst | Score calibration, specificity of problem and contribution, contact type accuracy |
+| Strategist | Icebreaker specificity, hook quality, channel appropriateness |
+| Writer | Word count (rule-based), em-dash and buzzword scan (rule-based), tone and ask quality (LLM) |
+
+At the end of the pipeline a summary table shows all four scores, any flags,
+and an overall average. Everything is logged to W&B as numeric metrics so you
+can compare runs over time.
+
+Run without the Supervisor when you want faster output or want to save LLM tokens:
+
+```bash
+python main.py --mode jobs --topic "your topic" --no-supervise
+```
 
 ## Frontend Prototype
 
 The `frontend/` directory contains a Vite-powered React prototype of the
 planned browser interface. It simulates the pipeline with delays and mock
-opportunities from `frontend/src/mockData.ts`. Its filter controls and W&B
-actions are visual demonstrations only.
-
-Run it locally:
+opportunities from `frontend/src/mockData.ts`.
 
 ```bash
 cd frontend
@@ -148,22 +184,18 @@ npm install
 npm run dev
 ```
 
-Build the frontend:
-
-```bash
-cd frontend
-npm run build
-```
-
 ## Outreach Rules
 
-The Writer agent is prompted to keep each email direct and specific:
+The Writer agent is prompted to follow these constraints:
 
 - Keep the email body at or below 200 words.
 - Open with an icebreaker tied to the recipient's actual work.
 - Use a student voice without corporate buzzwords.
 - Avoid em dashes and en dashes.
-- End with one low-friction ask, such as a 15-minute call or one question.
+- End with one low-friction ask such as a 15-minute call or one question.
+
+The Supervisor enforces word count, dash usage, and buzzword presence
+automatically using rule-based checks before the LLM quality review.
 
 ## Project Structure
 
@@ -175,7 +207,8 @@ UpSearch/
 |-- .env                        # Local API keys, ignored by git
 |-- upsearch/
 |   |-- llm.py                  # Claude and DeepSeek routing
-|   |-- tracker.py              # W&B experiment logging
+|   |-- supervisor.py           # Per-agent quality evaluator and pipeline summary
+|   |-- tracker.py              # W&B experiment logging with supervisor scores
 |   |-- agents/
 |   |   |-- scout.py            # Searches public sources through tool use
 |   |   |-- analyst.py          # Scores fit and extracts an outreach angle
@@ -193,11 +226,28 @@ UpSearch/
         `-- mockData.ts         # Demo opportunities, strategy, and W&B runs
 ```
 
+## W&B Metrics
+
+Each logged run includes:
+
+| Metric | Description |
+|---|---|
+| `fit_score` | Analyst fit score for the selected lead |
+| `word_count` | Word count of the draft body |
+| `sent` | Whether the email was marked as sent |
+| `supervisor_overall_score` | Average score across all four agents |
+| `supervisor_scout_score` | Scout evaluation score |
+| `supervisor_analyst_score` | Analyst evaluation score |
+| `supervisor_strategist_score` | Strategist evaluation score |
+| `supervisor_writer_score` | Writer evaluation score |
+
+A `supervisor_report.json` artifact is attached to every logged run containing
+the full flag list and per-agent reasoning.
+
 ## Current Limitations
 
 - The frontend does not call a backend API yet.
 - The frontend filters do not affect the mocked results yet.
-- The CLI catches source request failures and continues, so a blocked or
-  unavailable public endpoint may result in fewer leads.
-- Reply status updates after logging are currently managed in W&B rather than
-  through the CLI.
+- Reply status updates after logging are currently managed in W&B directly.
+- The Supervisor adds two to four extra LLM calls per run. Use `--no-supervise`
+  to skip them when speed matters.
