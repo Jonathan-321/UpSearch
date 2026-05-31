@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    @apply bg-[#09090b] text-zinc-100 font-sans antialiased;
+    background-image: radial-gradient(#1c1c22 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-zinc-700 rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-zinc-600;
+  }
+}
+
+@layer utilities {
+  .gradient-text {
+    @apply bg-gradient-to-r from-violet-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent;
+  }
+
+  .card {
+    @apply bg-zinc-900/80 border border-zinc-800 rounded-xl backdrop-blur-sm;
+  }
+
+  .card-hover {
+    @apply hover:border-zinc-700 hover:bg-zinc-900 transition-all duration-200;
+  }
+
+  .btn-primary {
+    @apply bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500
+           text-white font-semibold px-6 py-2.5 rounded-lg transition-all duration-200
+           shadow-lg shadow-violet-900/30 hover:shadow-violet-800/40 disabled:opacity-50
+           disabled:cursor-not-allowed disabled:hover:from-violet-600 disabled:hover:to-indigo-600;
+  }
+
+  .chip {
+    @apply px-3 py-1 rounded-full text-xs font-medium border transition-colors duration-150 cursor-pointer select-none;
+  }
+}
+
+/* Page-level glow */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80%;
+  height: 400px;
+  background: radial-gradient(ellipse at center top, rgba(139, 92, 246, 0.08) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
