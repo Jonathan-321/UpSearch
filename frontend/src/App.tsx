@@ -6,6 +6,7 @@ import StrategyPanel from './components/StrategyPanel'
 import EmailDraftPanel from './components/EmailDraftPanel'
 import WandbTrackerPanel from './components/WandbTrackerPanel'
 import SupervisorPanel from './components/SupervisorPanel'
+import ActivityConsole from './components/ActivityConsole'
 import { usePipeline } from './hooks/usePipeline'
 import OSSearchPanel from './components/OSSearchPanel'
 import OSPipelineStepper from './components/OSPipelineStepper'
@@ -20,12 +21,13 @@ type AppMode = 'search' | 'os'
 function SearchView() {
   const {
     status, error, agentStatuses, opportunities, selectedOpportunity,
-    strategy, draft, supervisorScores, wandbRuns,
+    strategy, draft, supervisorScores, wandbRuns, logEntries,
     startPipeline, selectOpportunity, setDraft, logToWandb,
   } = usePipeline()
 
   const isRunning = status === 'scouting' || status === 'analyzing'
   const isPostSelect = status === 'strategizing' || status === 'writing'
+  const isPipelineActive = isRunning || isPostSelect
   const handleRun = (topic: string, _filters: FilterKey[]) => startPipeline(topic)
 
   return (
@@ -38,11 +40,13 @@ function SearchView() {
         </p>
       </section>
 
-      <SearchPanel onRun={handleRun} isRunning={isRunning || isPostSelect} />
+      <SearchPanel onRun={handleRun} isRunning={isPipelineActive} />
 
       {status !== 'idle' && (
         <PipelineStepper agentStatuses={agentStatuses} opportunityCount={opportunities.length} />
       )}
+
+      <ActivityConsole entries={logEntries} isRunning={isPipelineActive} />
 
       {status === 'error' && error && (
         <div className="panel border-red-500/30 bg-red-500/5 p-5 flex items-start gap-3">
@@ -121,7 +125,7 @@ function SearchView() {
 function OSView() {
   const {
     running, stages, companies, currentCompany, currentPacket,
-    pendingMessages, error,
+    pendingMessages, error, logEntries,
     buildPacket, fetchCompanies, fetchPending, approveMessage, selectCompany,
   } = useOS()
 
@@ -149,6 +153,8 @@ function OSView() {
       )}
 
       {currentCompany && <OSPipelineStepper stages={stages} currentCompany={currentCompany} />}
+
+      <ActivityConsole entries={logEntries} isRunning={running} />
 
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(280px,0.82fr)_minmax(0,1.6fr)] gap-6 items-start">
         <div className="lg:sticky lg:top-6 lg:self-start">

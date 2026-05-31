@@ -228,15 +228,30 @@ async def os_stream_packet(company_name: str, lane: str = "ai_infra"):
     raw_profile = load_profile_text()
 
     async def generate():
+        import time
+
+        def log(agent: str, level: str, message: str, t0: float | None = None) -> str:
+            entry: dict = {"agent": agent, "level": level, "message": message}
+            if t0 is not None:
+                entry["elapsed"] = f"{time.monotonic() - t0:.1f}s"
+            return sse("log", entry)
+
         try:
             # ── Profile ───────────────────────────────────────────────────────
             yield sse("stage", {"stage": "profile", "status": "running", "message": "Loading profile..."})
+            yield log("Profile", "STARTED", "Parsing background and experience")
+            t0 = time.monotonic()
             profile = await asyncio.to_thread(profile_agent.run, raw_profile)
+            yield log("Profile", "COMPLETE",
+                      f"Loaded: {profile.get('name','?')} at {profile.get('school','?')}", t0)
             yield sse("stage", {"stage": "profile", "status": "complete",
                                 "message": f"{profile.get('name','?')} @ {profile.get('school','?')}"})
 
             # ── Company ───────────────────────────────────────────────────────
             yield sse("stage", {"stage": "company", "status": "running", "message": f"Researching {company_name}..."})
+            yield log("Company", "STARTED", f"Looking up {company_name}")
+            yield log("Company", "SOURCE", "Querying Hacker News for recent signal")
+            t0 = time.monotonic()
             company_result = await asyncio.to_thread(company_agent.run, company_name, lane, profile)
             company_data = company_result["result"]
             company_id = db.upsert_company(
@@ -247,23 +262,31 @@ async def os_stream_packet(company_name: str, lane: str = "ai_infra"):
                 hiring_status=company_data.get("hiring_status", "unknown"),
                 status="researched",
             )
+            yield log("Company", "COMPLETE",
+                      f"Fit {company_data.get('fit_score','?')}/10 · {company_data.get('hiring_status','unknown')}", t0)
             yield sse("stage", {"stage": "company", "status": "complete",
                                 "message": f"Fit: {company_data.get('fit_score','?')}/10",
                                 "data": company_data})
 
             # ── Problems ──────────────────────────────────────────────────────
             yield sse("stage", {"stage": "problem", "status": "running", "message": "Extracting open problems..."})
+            yield log("Problem", "STARTED", "Identifying open technical problems")
+            yield log("Problem", "SOURCE", "Searching Hacker News and Reddit")
+            t0 = time.monotonic()
             problem_result = await asyncio.to_thread(problem_agent.run, company_name, company_data, profile)
             problems = problem_result["result"].get("problems", [])
             for p in problems:
                 db.insert_problem(company_id, p["title"], p.get("description",""),
                                   p.get("source_urls",[]), p.get("relevance_score",0))
+            yield log("Problem", "COMPLETE", f"Found {len(problems)} source-backed problems", t0)
             yield sse("stage", {"stage": "problem", "status": "complete",
                                 "message": f"Found {len(problems)} problems", "data": problems})
 
             # ── People ────────────────────────────────────────────────────────
             top_problem = problems[0] if problems else {}
             yield sse("stage", {"stage": "people", "status": "running", "message": "Finding relevant people..."})
+            yield log("People", "STARTED", "Mapping engineers and researchers")
+            t0 = time.monotonic()
             people_result = await asyncio.to_thread(people_agent.run, company_name, top_problem, profile)
             people_list = people_result["result"].get("people", [])
             for person in people_list:
@@ -273,29 +296,39 @@ async def os_stream_packet(company_name: str, lane: str = "ai_infra"):
                                  relevance_score=person.get("relevance_score",0),
                                  relevance_reason=person.get("relevance_reason",""),
                                  proximity=person.get("proximity","engineer"))
+            yield log("People", "COMPLETE", f"Mapped {len(people_list)} people worth reaching", t0)
             yield sse("stage", {"stage": "people", "status": "complete",
                                 "message": f"Mapped {len(people_list)} people", "data": people_list})
 
             # ── Technical Note ────────────────────────────────────────────────
             yield sse("stage", {"stage": "technical_note", "status": "running", "message": "Writing one-page technical note..."})
+            yield log("Note", "STARTED", "Writing one-page technical brief")
+            t0 = time.monotonic()
             note_result = await asyncio.to_thread(technical_note_agent.run, company_name, company_data, top_problem, profile)
             note_text = note_result["result"].get("technical_note", "")
             adjacent_proof = note_result["result"].get("adjacent_proof", "")
+            yield log("Note", "COMPLETE", f"{len(note_text.split())} words written", t0)
             yield sse("stage", {"stage": "technical_note", "status": "complete",
                                 "message": f"{len(note_text.split())} words",
                                 "data": {"technical_note": note_text, "adjacent_proof": adjacent_proof}})
 
             # ── Outreach ──────────────────────────────────────────────────────
             top_person = people_list[0] if people_list else {}
+            recipient = top_person.get("name", "top contact") if top_person else "top contact"
             yield sse("stage", {"stage": "outreach", "status": "running", "message": "Drafting outreach variants..."})
+            yield log("Outreach", "STARTED", f"Drafting variants for {recipient}")
+            t0 = time.monotonic()
             outreach_result = await asyncio.to_thread(
                 outreach_agent.run, company_name, top_problem, top_person, note_text, adjacent_proof, profile)
             drafts = outreach_result["result"]
+            yield log("Outreach", "COMPLETE", f"{len(drafts)} variants ready for review", t0)
             yield sse("stage", {"stage": "outreach", "status": "complete",
                                 "message": f"{len(drafts)} variants", "data": drafts})
 
             # ── QA ────────────────────────────────────────────────────────────
             yield sse("stage", {"stage": "qa", "status": "running", "message": "Running QA checks..."})
+            yield log("QA", "STARTED", "Checking claims, sources, word count, tone")
+            t0 = time.monotonic()
             packet_data = {"company": company_data, "problems": problems, "people": people_list,
                            "technical_note": note_text, "adjacent_proof": adjacent_proof, "outreach_drafts": drafts}
             qa_result = await asyncio.to_thread(qa_agent.run, packet_data, profile)
@@ -318,6 +351,9 @@ async def os_stream_packet(company_name: str, lane: str = "ai_infra"):
                     db.insert_message(packet_id, None, variant, draft_text)
             db.set_company_status(company_id, "packet_ready")
 
+            flag_count = len(qa_result.get("flags", []))
+            qa_status = "passed" if qa_result.get("passed") else f"{flag_count} flag{'s' if flag_count != 1 else ''}"
+            yield log("QA", "COMPLETE", f"Score {qa_result.get('score',0)}/10 · {qa_status}", t0)
             yield sse("stage", {"stage": "qa", "status": "complete",
                                 "message": f"QA: {qa_result.get('score',0)}/10",
                                 "data": qa_result})
@@ -333,6 +369,7 @@ async def os_stream_packet(company_name: str, lane: str = "ai_infra"):
             })
 
         except Exception as e:
+            yield log("Pipeline", "ERROR", str(e))
             yield sse("error", {"error": str(e), "stage": "unknown"})
 
     return StreamingResponse(

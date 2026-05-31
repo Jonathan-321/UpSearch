@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react'
 import { API_BASE } from '../types'
+import type { LogEntry, LogLevel } from '../types'
 
 const OS_BASE = API_BASE.replace('/api', '/os')
 
@@ -92,6 +93,10 @@ async function apiFetch<T>(path: string, method = 'GET', body?: unknown): Promis
   return res.json()
 }
 
+function nowTs(): string {
+  return new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
+}
+
 export function useOS() {
   const [running, setRunning] = useState(false)
   const [stages, setStages] = useState<OSStage[]>(initialStages())
@@ -104,6 +109,7 @@ export function useOS() {
   } | null>(null)
   const [pendingMessages, setPendingMessages] = useState<OSMessage[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [logEntries, setLogEntries] = useState<LogEntry[]>([])
   const esRef = useRef<EventSource | null>(null)
 
   const updateStage = useCallback((key: OSStageKey, update: Partial<OSStage>) => {
@@ -117,6 +123,7 @@ export function useOS() {
     setCurrentCompany(company)
     setStages(initialStages())
     setCurrentPacket(null)
+    setLogEntries([])
 
     const es = new EventSource(`${OS_BASE}/packet/stream/${encodeURIComponent(company)}?lane=${lane}`)
     esRef.current = es
@@ -124,6 +131,14 @@ export function useOS() {
     es.addEventListener('stage', (e: MessageEvent) => {
       const d = JSON.parse(e.data) as { stage: OSStageKey; status: StageStatus; message: string; data?: unknown }
       updateStage(d.stage, { status: d.status, message: d.message, data: d.data })
+    })
+
+    es.addEventListener('log', (e: MessageEvent) => {
+      const d = JSON.parse(e.data) as { agent: string; level: string; message: string; elapsed?: string }
+      setLogEntries(prev => [
+        ...prev.slice(-99),
+        { ts: nowTs(), agent: d.agent, level: d.level as LogLevel, message: d.message, elapsed: d.elapsed },
+      ])
     })
 
     es.addEventListener('complete', (e: MessageEvent) => {
@@ -192,7 +207,7 @@ export function useOS() {
 
   return {
     running, stages, companies, currentCompany, currentPacket,
-    pendingMessages, error,
+    pendingMessages, error, logEntries,
     buildPacket, fetchCompanies, fetchPacket, fetchPending,
     approveMessage, selectCompany,
   }
