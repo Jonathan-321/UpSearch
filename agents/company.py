@@ -2,8 +2,8 @@
 Company Agent — researches a company and scores it for technical fit, hiring relevance, and reachability.
 Uses LLM knowledge + public sources (HN, GitHub activity).
 """
-import json
 from upsearch import llm
+from upsearch.json_utils import parse_model_json_object
 from upsearch.sourcing import hackernews
 
 SYSTEM = """You are a Company Agent for an Opportunity Intelligence OS. Given a company name and target lane,
@@ -49,10 +49,8 @@ def run(company_name: str, lane: str, user_profile: dict) -> dict:
         ),
         max_tokens=800,
     )
-    start, end = text.find("{"), text.rfind("}") + 1
-    try:
-        result = json.loads(text[start:end]) if start != -1 else {}
-    except json.JSONDecodeError:
+    result = parse_model_json_object(text, {"name": company_name, "fit_score": 5, "why": "Parse error"})
+    if not result:
         result = {"name": company_name, "fit_score": 5, "why": "Parse error"}
 
     return {

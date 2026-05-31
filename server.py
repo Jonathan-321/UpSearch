@@ -262,6 +262,7 @@ async def os_stream_packet(company_name: str, lane: str = "ai_infra"):
                 hiring_status=company_data.get("hiring_status", "unknown"),
                 status="researched",
             )
+            db.clear_company_generated_state(company_id)
             yield log("Company", "COMPLETE",
                       f"Fit {company_data.get('fit_score','?')}/10 · {company_data.get('hiring_status','unknown')}", t0)
             yield sse("stage", {"stage": "company", "status": "complete",

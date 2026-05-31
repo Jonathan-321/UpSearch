@@ -3,8 +3,8 @@ QA Agent — checks sources, claims, word count, tone, and unsupported experienc
 Runs before any packet is marked ready for outreach.
 """
 import re
-import json
 from upsearch import llm
+from upsearch.json_utils import parse_model_json_object
 
 SYSTEM = """You are a QA Agent for an outreach packet. Check for:
 1. Fabricated experience — phrases like "I built", "I deployed", "I worked on" without proof
@@ -75,11 +75,10 @@ def run(packet: dict, user_profile: dict) -> dict:
     )
     llm_result_text = llm.complete(system=SYSTEM, user=packet_summary, max_tokens=512)
 
-    start, end = llm_result_text.find("{"), llm_result_text.rfind("}") + 1
-    try:
-        llm_result = json.loads(llm_result_text[start:end]) if start != -1 else {}
-    except json.JSONDecodeError:
-        llm_result = {"passed": False, "score": 4, "flags": ["QA parse error"]}
+    llm_result = parse_model_json_object(
+        llm_result_text,
+        {"passed": False, "score": 4, "flags": ["QA parse error"]},
+    )
 
     # Merge rule-based flags with LLM flags
     all_flags = flags + [f for f in llm_result.get("flags", []) if f not in flags]

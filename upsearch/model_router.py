@@ -51,12 +51,21 @@ class ModelRouter:
             )
 
         if task_type in {TaskType.TECHNICAL_NOTE, TaskType.VERIFICATION}:
+            if self.settings.strong_model != "not-configured":
+                return ModelRoute(
+                    provider=self.settings.strong_model_provider,
+                    model=self.settings.strong_model,
+                    reason="Judgment-heavy route for final synthesis and claim QA.",
+                    requires_api_key=self.settings.strong_model_provider not in {"manual-review", "local"},
+                    configured=True,
+                )
+            # Fallback to cheap model when no strong model is configured
             return ModelRoute(
-                provider=self.settings.strong_model_provider,
-                model=self.settings.strong_model,
-                reason="Judgment-heavy route for final synthesis and claim QA.",
-                requires_api_key=self.settings.strong_model_provider not in {"manual-review", "local"},
-                configured=self.settings.strong_model != "not-configured",
+                provider="deepseek",
+                model=self.settings.deepseek_model,
+                reason="Fallback to cheap model for technical note and QA — strong model not configured.",
+                requires_api_key=True,
+                configured=self.settings.has_deepseek_key,
             )
 
         return ModelRoute(

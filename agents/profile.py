@@ -2,8 +2,8 @@
 Profile Agent — builds the user's technical map from profile.txt and GitHub.
 Output: structured profile dict used by every downstream agent.
 """
-import json
 from upsearch import llm
+from upsearch.json_utils import parse_model_json_object
 
 SYSTEM = """You are a Profile Agent. Given a student's raw profile text, extract a structured technical map.
 
@@ -36,8 +36,5 @@ def run(raw_profile: str) -> dict:
             "proof_points": [],
         }
     text = llm.complete(system=SYSTEM, user=f"Profile:\n{raw_profile}", max_tokens=800)
-    start, end = text.find("{"), text.rfind("}") + 1
-    try:
-        return json.loads(text[start:end]) if start != -1 else {}
-    except json.JSONDecodeError:
-        return {"background_summary": raw_profile[:300], "skills": [], "interests": []}
+    result = parse_model_json_object(text)
+    return result or {"background_summary": raw_profile[:300], "skills": [], "interests": []}
