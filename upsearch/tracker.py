@@ -2,8 +2,6 @@
 W&B Tracker — logs every pipeline run as a W&B experiment.
 Each outreach attempt is one run. Supervisor scores are included when available.
 """
-import os
-import wandb
 from upsearch.sourcing.base import Post
 
 
@@ -15,6 +13,14 @@ def log(
     sent: bool = False,
     supervisor_summary: dict | None = None,
 ) -> str:
+    try:
+        import wandb
+    except ImportError as exc:
+        raise RuntimeError(
+            "W&B logging requires the optional 'wandb' package. "
+            "Install requirements.txt or run with --no-log."
+        ) from exc
+
     agent_scores = supervisor_summary.get("agent_scores", {}) if supervisor_summary else {}
     overall_score = supervisor_summary.get("overall_score") if supervisor_summary else None
 
