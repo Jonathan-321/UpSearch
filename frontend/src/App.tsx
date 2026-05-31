@@ -205,42 +205,70 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col relative">
-      {/* Header with mode toggle */}
-      <header className="relative z-10 border-b border-zinc-800/60 bg-zinc-950/70 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <button onClick={() => {}} className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-600 to-indigo-700 flex items-center justify-center shadow-lg shadow-violet-900/40">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <circle cx="6" cy="6" r="4" stroke="white" strokeWidth="1.5"/>
-                <line x1="9.5" y1="9.5" x2="14" y2="14" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
-                <line x1="6" y1="3" x2="6" y2="9" stroke="white" strokeWidth="1.2" strokeLinecap="round"/>
-                <line x1="3" y1="6" x2="9" y2="6" stroke="white" strokeWidth="1.2" strokeLinecap="round"/>
-              </svg>
-            </div>
-            <div>
-              <span className="text-lg font-bold gradient-text">UpSearch</span>
-              {mode === 'os' && <span className="text-xs text-zinc-600 ml-1.5">Opportunity OS</span>}
-            </div>
-          </button>
 
-          <ModeToggle mode={mode} onChange={setMode}/>
+      {/* Header */}
+      <header className="relative z-10 border-b border-white/[0.05] bg-[#080810]/80 backdrop-blur-xl">
+        {/* Gradient line at very top */}
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-500/40 to-transparent"/>
 
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-zinc-800 bg-zinc-900/60 text-xs text-zinc-400">
+        <div className="max-w-7xl mx-auto px-6 py-3.5 flex items-center justify-between gap-4">
+          {/* Logo */}
+          <div className="flex items-center gap-3">
+            <div className="relative w-9 h-9">
+              <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-700
+                              shadow-lg shadow-violet-950/60"/>
+              <div className="absolute inset-0 rounded-xl flex items-center justify-center">
+                <svg width="17" height="17" viewBox="0 0 16 16" fill="none">
+                  <circle cx="6" cy="6" r="3.5" stroke="white" strokeWidth="1.5"/>
+                  <line x1="9" y1="9" x2="13.5" y2="13.5" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
+                  <line x1="6" y1="3" x2="6" y2="9" stroke="rgba(255,255,255,0.6)" strokeWidth="1.2" strokeLinecap="round"/>
+                  <line x1="3" y1="6" x2="9" y2="6" stroke="rgba(255,255,255,0.6)" strokeWidth="1.2" strokeLinecap="round"/>
+                </svg>
+              </div>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-base font-bold leading-none gradient-text">UpSearch</span>
+              <span className="text-[10px] text-zinc-600 font-medium mt-0.5 tracking-wide">
+                {mode === 'os' ? 'Opportunity Intelligence OS' : 'Quick Research Search'}
+              </span>
+            </div>
+          </div>
+
+          {/* Mode toggle */}
+          <div className="flex items-center bg-white/[0.03] border border-white/[0.07] rounded-xl p-1 gap-1">
+            {(['search', 'os'] as AppMode[]).map(m => (
+              <button key={m} onClick={() => setMode(m)}
+                className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 ${
+                  mode === m
+                    ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md shadow-violet-950/50'
+                    : 'text-zinc-500 hover:text-zinc-300'
+                }`}
+              >
+                {m === 'search' ? 'Quick Search' : 'Opportunity OS'}
+              </button>
+            ))}
+          </div>
+
+          {/* Status pill */}
+          <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-white/[0.07]
+                          bg-white/[0.02] text-xs text-zinc-500 font-medium">
             <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-500 opacity-60"/>
+              <span className="animate-ping-slow absolute inline-flex h-full w-full rounded-full bg-violet-500 opacity-50"/>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-violet-500"/>
             </span>
-            Claude + DeepSeek + W&amp;B
+            DeepSeek · Claude · W&amp;B
           </div>
         </div>
       </header>
 
+      {/* Main */}
       <main className="flex-1 relative z-10 max-w-7xl mx-auto w-full px-4 sm:px-6 py-8">
         {mode === 'search' ? <SearchView onReset={() => {}} /> : <OSView />}
       </main>
 
-      <footer className="relative z-10 border-t border-zinc-800/50 py-4 px-6 text-center">
-        <p className="text-xs text-zinc-700">
+      {/* Footer */}
+      <footer className="relative z-10 border-t border-white/[0.04] py-4 px-6 text-center">
+        <p className="text-xs text-zinc-800">
           UpSearch + Opportunity OS &nbsp;·&nbsp; Action over analysis.
         </p>
       </footer>
