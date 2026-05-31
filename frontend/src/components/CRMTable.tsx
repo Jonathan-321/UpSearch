@@ -44,13 +44,14 @@ export default function CRMTable({ companies, currentCompany, onSelect }: Props)
           <p className="text-xs text-text-3 mt-1">Build a packet to start the desk.</p>
         </div>
       ) : (
-        <div className="divide-y divide-border">
+        <div className="divide-y divide-border lg:max-h-[58vh] lg:overflow-y-auto">
           {companies.map(company => {
             const selected = company.name === currentCompany
             const status = STATUS[company.status] ?? STATUS.sourced
             return (
               <button key={company.id} type="button" onClick={() => onSelect(company.name)}
                 aria-pressed={selected}
+                aria-label={`Select ${company.name}`}
                 className={`w-full text-left p-4 transition-colors border-l-2 ${
                   selected ? 'border-l-accent bg-amber-500/[0.06]' : 'border-l-transparent hover:bg-surface-2'
                 }`}>
@@ -63,7 +64,9 @@ export default function CRMTable({ companies, currentCompany, onSelect }: Props)
                 </div>
                 <div className="flex items-center justify-between gap-2 mt-3">
                   <span className={`badge ${status.style}`}>{status.label}</span>
-                  <span className="text-[10px] uppercase tracking-wider text-text-3">{company.hiring_status}</span>
+                  {company.hiring_status && (
+                    <span className="text-[10px] uppercase tracking-wider text-text-3">{company.hiring_status}</span>
+                  )}
                 </div>
               </button>
             )

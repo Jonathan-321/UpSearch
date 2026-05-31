@@ -9,7 +9,7 @@ export default function WandbTrackerPanel({ runs }: Props) {
 
   return (
     <details className="panel overflow-hidden">
-      <summary className="px-5 py-4 cursor-pointer list-none flex flex-wrap items-center justify-between gap-3">
+      <summary className="px-5 py-4 cursor-pointer list-none flex flex-wrap items-center justify-between gap-3 group" aria-label="Toggle W&B experiment history">
         <div>
           <p className="workspace-label">Experiment History</p>
           <h2 className="text-base font-semibold text-text-1 mt-1">W&amp;B outreach tracker</h2>
@@ -18,7 +18,9 @@ export default function WandbTrackerPanel({ runs }: Props) {
           <span className="badge font-mono">{runs.length} runs</span>
           <span className="badge font-mono">{sent} sent</span>
           <span className="badge badge-success font-mono">{rate} reply rate</span>
-          <span className="text-text-3">Expand</span>
+          <svg className="w-4 h-4 text-text-3 transition-transform details-chevron" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         </div>
       </summary>
 

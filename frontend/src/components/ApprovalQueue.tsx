@@ -51,20 +51,30 @@ export default function ApprovalQueue({ messages, onApprove }: Props) {
                 {over && <p className="text-xs text-red-400 mt-2">Over 200 words. Edit before sending manually.</p>}
 
                 <div className="flex flex-wrap items-center gap-2 mt-4">
-                  <button className="btn bg-emerald-700 text-white hover:bg-emerald-600"
+                  <button
+                    className="btn bg-emerald-700 border-emerald-700 text-white hover:bg-emerald-600 hover:border-emerald-600"
                     disabled={approving === message.id}
+                    aria-label={`Approve draft for ${message.person_name || 'recipient'}`}
                     onClick={async () => {
                       setApproving(message.id)
                       try { await onApprove(message.id) } finally { setApproving(null) }
                     }}>
                     {approving === message.id ? 'Approving...' : 'Approve'}
                   </button>
-                  <button className="btn btn-ghost" onClick={() => setDismissed(prev => new Set([...prev, message.id]))}>Skip</button>
-                  <button className="btn btn-ghost ml-auto" onClick={async () => {
-                    await navigator.clipboard.writeText(message.content)
-                    setCopied(message.id)
-                    setTimeout(() => setCopied(null), 2000)
-                  }}>
+                  <button
+                    className="btn btn-ghost"
+                    aria-label="Skip this draft"
+                    onClick={() => setDismissed(prev => new Set([...prev, message.id]))}>
+                    Skip
+                  </button>
+                  <button
+                    className="btn btn-ghost ml-auto"
+                    aria-label="Copy draft to clipboard"
+                    onClick={async () => {
+                      await navigator.clipboard.writeText(message.content)
+                      setCopied(message.id)
+                      setTimeout(() => setCopied(null), 2000)
+                    }}>
                     {copied === message.id ? 'Copied' : 'Copy draft'}
                   </button>
                 </div>

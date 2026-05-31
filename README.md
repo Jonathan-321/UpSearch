@@ -12,7 +12,7 @@ The project includes two workflows in one frontend:
   packet, store it in a local SQLite CRM, and review outreach variants before
   approval.
 
-![UpSearch architecture](docs/assets/upsearch-architecture.png)
+![UpSearch architecture](docs/assets/upsearch-architecture-v3.svg)
 
 ## Features
 
@@ -34,6 +34,16 @@ The project includes two workflows in one frontend:
   CRM.
 - Surfaces drafts in a human approval queue.
 - Never sends messages autonomously.
+
+## User Data and LinkedIn
+
+UpSearch does not automatically fetch your LinkedIn profile. Your personal
+background comes from `profile.txt`, which you edit manually with your skills,
+coursework, interests, and goals.
+
+For target contacts, the People Agent searches public Hacker News signal and
+may suggest public LinkedIn or GitHub URLs when available. Those profile links
+must be verified manually before you use them for outreach.
 
 ## Quick Start
 
@@ -258,7 +268,9 @@ UpSearch/
 |
 |-- docs/
 |   `-- assets/
-|       `-- upsearch-architecture.png
+|       |-- upsearch-architecture.png
+|       |-- upsearch-architecture-v2.png
+|       `-- upsearch-architecture-v3.svg
 |
 `-- frontend/
     |-- src/

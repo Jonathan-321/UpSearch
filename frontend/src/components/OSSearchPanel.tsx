@@ -28,12 +28,9 @@ export default function OSSearchPanel({ onBuild, isRunning }: Props) {
 
   return (
     <section className="panel panel-raised p-5 sm:p-6 space-y-4">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <p className="workspace-label">New Research Packet</p>
-          <h2 className="text-section mt-1">Choose a company to investigate</h2>
-        </div>
-        <p className="hidden md:block text-meta font-mono">PROFILE / COMPANY / PROBLEM / PEOPLE / NOTE / OUTREACH / QA</p>
+      <div>
+        <p className="workspace-label">New Research Packet</p>
+        <h2 className="text-section mt-1">Choose a company to investigate</h2>
       </div>
 
       <form onSubmit={submit} className="space-y-3">

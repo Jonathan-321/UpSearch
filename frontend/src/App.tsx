@@ -151,7 +151,9 @@ function OSView() {
       {currentCompany && <OSPipelineStepper stages={stages} currentCompany={currentCompany} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(280px,0.82fr)_minmax(0,1.6fr)] gap-6 items-start">
-        <CRMTable companies={companies} currentCompany={currentCompany} onSelect={selectCompany} />
+        <div className="lg:sticky lg:top-6 lg:self-start">
+          <CRMTable companies={companies} currentCompany={currentCompany} onSelect={selectCompany} />
+        </div>
         {currentPacket?.packet ? (
           <PacketView company={currentCompany} packet={currentPacket.packet}
             problems={currentPacket.problems} people={currentPacket.people} />
@@ -179,7 +181,7 @@ export default function App() {
       <header className="border-b border-border bg-bg/95">
         <div className="max-w-[1480px] mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg border border-amber-500/40 bg-amber-500/10 flex items-center justify-center text-amber-400">
+            <div className="w-9 h-9 rounded-lg border border-amber-500/40 bg-amber-500/10 flex items-center justify-center text-amber-400" aria-hidden="true">
               <svg width="17" height="17" viewBox="0 0 16 16" fill="none">
                 <circle cx="6" cy="6" r="3.5" stroke="currentColor" strokeWidth="1.5" />
                 <line x1="9" y1="9" x2="13.5" y2="13.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
@@ -187,17 +189,13 @@ export default function App() {
                 <line x1="3" y1="6" x2="9" y2="6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
               </svg>
             </div>
-            <div>
-              <p className="text-base font-bold leading-none text-text-1">UpSearch</p>
-              <p className="text-[10px] text-text-3 mt-1 tracking-[0.16em] uppercase">
-                {mode === 'os' ? 'Opportunity Intelligence OS' : 'Quick Research Search'}
-              </p>
-            </div>
+            <p className="text-base font-bold leading-none text-text-1">UpSearch</p>
           </div>
 
-          <div className="flex items-center bg-surface border border-border rounded-lg p-1 gap-1">
+          <div role="group" aria-label="Application mode" className="flex items-center bg-surface border border-border rounded-lg p-1 gap-1">
             {(['search', 'os'] as AppMode[]).map(item => (
               <button key={item} onClick={() => setMode(item)}
+                aria-pressed={mode === item}
                 className={`px-3 sm:px-4 py-1.5 text-xs font-semibold rounded-md transition-colors ${
                   mode === item ? 'bg-accent text-[#1a1205]' : 'text-text-2 hover:text-text-1'
                 }`}>

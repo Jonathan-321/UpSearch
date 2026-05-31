@@ -1,0 +1,165 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1040" role="img" aria-labelledby="title desc">
+  <title id="title">UpSearch Architecture</title>
+  <desc id="desc">Architecture diagram showing manual user profile input, public data sources, Quick Search, Opportunity OS, FastAPI, W&amp;B, SQLite, Supervisor QA, and SSE updates.</desc>
+  <defs>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#182028" stroke-width="1"/>
+    </pattern>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#080b0e"/>
+      <stop offset="1" stop-color="#0a0c0f"/>
+    </linearGradient>
+    <marker id="arrow-green" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+      <path d="M0,0 L9,4.5 L0,9 Z" fill="#4ade80"/>
+    </marker>
+    <marker id="arrow-amber" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+      <path d="M0,0 L9,4.5 L0,9 Z" fill="#f59e0b"/>
+    </marker>
+    <style>
+      .title { fill:#e8eaed; font:700 44px 'Arial',sans-serif; }
+      .section { fill:#4ade80; font:700 24px 'Arial',sans-serif; }
+      .input-title { fill:#e8eaed; font:700 17px 'Arial',sans-serif; }
+      .label { fill:#e8eaed; font:600 16px 'Arial',sans-serif; }
+      .small { fill:#8b949e; font:500 13px 'Arial',sans-serif; }
+      .tiny { fill:#8b949e; font:500 12px 'Arial',sans-serif; }
+      .mono { font-family:'Courier New',monospace; }
+      .panel { fill:#111418; stroke:#39424d; stroke-width:1.5; }
+      .workflow { fill:#0d1115; stroke:#4a5560; stroke-width:1.5; }
+      .box { fill:#151a20; stroke:#4ade80; stroke-width:1.4; }
+      .input { fill:#111418; stroke:#f59e0b; stroke-width:1.5; }
+      .note { fill:#111418; stroke:#f59e0b; stroke-width:1.5; stroke-dasharray:7 5; }
+      .primary { fill:none; stroke:#4ade80; stroke-width:2; marker-end:url(#arrow-green); }
+      .data { fill:none; stroke:#f59e0b; stroke-width:2; marker-end:url(#arrow-amber); }
+      .qa { fill:none; stroke:#f59e0b; stroke-width:1.8; stroke-dasharray:7 5; marker-end:url(#arrow-amber); }
+      .dash { fill:none; stroke:#f59e0b; stroke-width:1.8; stroke-dasharray:7 5; }
+      .backend { fill:none; stroke:#4ade80; stroke-width:2; stroke-dasharray:7 5; marker-end:url(#arrow-green); }
+    </style>
+  </defs>
+
+  <rect width="1600" height="1040" fill="url(#bg)"/>
+  <rect width="1600" height="1040" fill="url(#grid)" opacity="0.65"/>
+
+  <text x="800" y="58" text-anchor="middle" class="title">UpSearch Architecture</text>
+  <text x="800" y="92" text-anchor="middle" class="section" fill="#f59e0b">Data Inputs</text>
+
+  <!-- Data inputs -->
+  <rect x="90" y="112" width="390" height="96" rx="12" class="input"/>
+  <text x="118" y="150" class="input-title mono">profile.txt (Manual User Profile)</text>
+  <text x="118" y="180" class="small">Skills, coursework, interests, goals</text>
+
+  <rect x="610" y="112" width="320" height="96" rx="12" class="input"/>
+  <text x="770" y="150" text-anchor="middle" class="input-title">Public Reddit + Hacker News</text>
+  <text x="770" y="180" text-anchor="middle" class="small">Live public research signals</text>
+
+  <rect x="1060" y="112" width="360" height="96" rx="12" class="input"/>
+  <text x="1240" y="145" text-anchor="middle" class="input-title">Public LinkedIn / GitHub URLs</text>
+  <text x="1240" y="174" text-anchor="middle" class="small">Suggested target contacts</text>
+  <text x="1240" y="194" text-anchor="middle" class="small">Manual verification required</text>
+
+  <rect x="1430" y="118" width="150" height="84" rx="10" class="note"/>
+  <text x="1505" y="148" text-anchor="middle" class="small" fill="#f59e0b">No automatic</text>
+  <text x="1505" y="169" text-anchor="middle" class="small" fill="#f59e0b">LinkedIn profile</text>
+  <text x="1505" y="190" text-anchor="middle" class="small" fill="#f59e0b">fetch</text>
+
+  <!-- Frontend -->
+  <rect x="610" y="242" width="380" height="64" rx="10" class="panel"/>
+  <text x="800" y="283" text-anchor="middle" class="section" fill="#e8eaed">React Frontend</text>
+  <path d="M800 306 V340 H470 V364" class="primary"/>
+  <path d="M800 306 V340 H1110 V364" class="primary"/>
+
+  <!-- Workflow panels -->
+  <rect x="248" y="346" width="455" height="570" rx="16" class="workflow"/>
+  <text x="476" y="386" text-anchor="middle" class="section">Quick Search</text>
+
+  <rect x="860" y="346" width="500" height="570" rx="16" class="workflow"/>
+  <text x="1110" y="386" text-anchor="middle" class="section">Opportunity OS</text>
+
+  <!-- Quick Search boxes -->
+  <g>
+    <rect x="300" y="410" width="350" height="42" rx="7" class="box"/>
+    <text x="475" y="437" text-anchor="middle" class="label">Topic or Role</text>
+    <rect x="300" y="470" width="350" height="42" rx="7" class="box"/>
+    <text x="475" y="497" text-anchor="middle" class="label">Scout Agent</text>
+    <rect x="300" y="530" width="350" height="42" rx="7" class="box"/>
+    <text x="475" y="557" text-anchor="middle" class="label">Reddit + Hacker News</text>
+    <rect x="300" y="590" width="350" height="42" rx="7" class="box"/>
+    <text x="475" y="617" text-anchor="middle" class="label">Analyst Agent</text>
+    <rect x="300" y="650" width="350" height="42" rx="7" class="box"/>
+    <text x="475" y="677" text-anchor="middle" class="label">User Selects Lead</text>
+    <rect x="300" y="710" width="350" height="42" rx="7" class="box"/>
+    <text x="475" y="737" text-anchor="middle" class="label">Strategist Agent</text>
+    <rect x="300" y="770" width="350" height="42" rx="7" class="box"/>
+    <text x="475" y="797" text-anchor="middle" class="label">Writer Agent</text>
+    <rect x="300" y="830" width="350" height="42" rx="7" class="box"/>
+    <text x="475" y="857" text-anchor="middle" class="label">W&amp;B Tracker</text>
+    <path d="M475 452 V470 M475 512 V530 M475 572 V590 M475 632 V650 M475 692 V710 M475 752 V770 M475 812 V830" class="primary"/>
+  </g>
+
+  <!-- Opportunity OS boxes -->
+  <g>
+    <rect x="920" y="410" width="380" height="42" rx="7" class="box"/>
+    <text x="1110" y="437" text-anchor="middle" class="label">Company + Lane</text>
+    <rect x="920" y="464" width="380" height="42" rx="7" class="box"/>
+    <text x="1110" y="491" text-anchor="middle" class="label">Profile Agent</text>
+    <rect x="920" y="518" width="380" height="42" rx="7" class="box"/>
+    <text x="1110" y="545" text-anchor="middle" class="label">Company Agent</text>
+    <rect x="920" y="572" width="380" height="42" rx="7" class="box"/>
+    <text x="1110" y="599" text-anchor="middle" class="label">Problem Agent</text>
+    <rect x="920" y="626" width="380" height="42" rx="7" class="box"/>
+    <text x="1110" y="653" text-anchor="middle" class="label">People Agent</text>
+    <rect x="920" y="680" width="380" height="42" rx="7" class="box"/>
+    <text x="1110" y="707" text-anchor="middle" class="label">Technical Note Agent</text>
+    <rect x="920" y="734" width="380" height="42" rx="7" class="box"/>
+    <text x="1110" y="761" text-anchor="middle" class="label">Outreach Agent</text>
+    <rect x="920" y="788" width="380" height="42" rx="7" class="box"/>
+    <text x="1110" y="815" text-anchor="middle" class="label">QA Agent</text>
+    <rect x="920" y="842" width="380" height="42" rx="7" class="box"/>
+    <text x="1110" y="869" text-anchor="middle" class="label">Human Approval Queue</text>
+    <rect x="920" y="896" width="380" height="42" rx="7" class="box"/>
+    <text x="1110" y="923" text-anchor="middle" class="label">SQLite CRM</text>
+    <path d="M1110 452 V464 M1110 506 V518 M1110 560 V572 M1110 614 V626 M1110 668 V680 M1110 722 V734 M1110 776 V788 M1110 830 V842 M1110 884 V896" class="primary"/>
+  </g>
+
+  <!-- Exact data input routes -->
+  <path d="M180 208 V330 H730 V611 H650" class="data"/>
+  <path d="M360 208 V228 H888 V485 H920" class="data"/>
+  <path d="M770 208 V226 H690 V491 H650" class="data"/>
+  <path d="M850 208 V246 H820 V647 H920" class="data"/>
+  <path d="M1240 208 V266 H840 V657 H920" class="data"/>
+
+  <!-- Supervisor QA, only agent stages -->
+  <rect x="44" y="538" width="164" height="134" rx="12" class="note"/>
+  <text x="126" y="579" text-anchor="middle" class="input-title" fill="#f59e0b">Supervisor QA</text>
+  <text x="126" y="612" text-anchor="middle" class="small">Evaluates agent</text>
+  <text x="126" y="633" text-anchor="middle" class="small">quality and rules</text>
+  <path d="M208 558 H238 V491 H300" class="qa"/>
+  <path d="M208 582 H252 V611 H300" class="qa"/>
+  <path d="M208 606 H238 V731 H300" class="qa"/>
+  <path d="M208 630 H224 V791 H300" class="qa"/>
+
+  <!-- SSE progress updates -->
+  <rect x="1418" y="582" width="154" height="100" rx="12" class="note"/>
+  <text x="1495" y="622" text-anchor="middle" class="input-title" fill="#f59e0b">SSE Progress</text>
+  <text x="1495" y="650" text-anchor="middle" class="input-title" fill="#f59e0b">Updates</text>
+  <path d="M1300 539 H1380 M1300 593 H1380 M1300 647 H1380 M1300 701 H1380 M1300 755 H1380 M1300 809 H1380 M1380 539 V809" class="dash"/>
+  <path d="M1380 632 H1418" class="qa"/>
+
+  <!-- Backend -->
+  <rect x="580" y="952" width="440" height="72" rx="12" class="panel"/>
+  <text x="800" y="982" text-anchor="middle" class="section" fill="#e8eaed">FastAPI Server</text>
+  <text x="710" y="1008" text-anchor="middle" class="label mono">/api/*</text>
+  <text x="890" y="1008" text-anchor="middle" class="label mono">/os/*</text>
+  <path d="M475 872 V935 H690 V952" class="primary"/>
+  <path d="M1110 938 V944 H910 V952" class="primary"/>
+
+  <!-- External storage -->
+  <rect x="310" y="958" width="200" height="58" rx="10" class="panel"/>
+  <text x="410" y="982" text-anchor="middle" class="label">W&amp;B Cloud</text>
+  <text x="410" y="1004" text-anchor="middle" class="small">Logged Quick Search runs</text>
+  <path d="M580 988 H510" class="backend"/>
+
+  <rect x="1090" y="958" width="210" height="58" rx="10" class="panel"/>
+  <text x="1195" y="982" text-anchor="middle" class="label">Local SQLite Storage</text>
+  <text x="1195" y="1004" text-anchor="middle" class="small">Opportunity OS packets</text>
+  <path d="M1020 988 H1090" class="backend"/>
+</svg>

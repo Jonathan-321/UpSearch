@@ -124,6 +124,7 @@
   .input:focus-visible,
   button:focus-visible,
   a:focus-visible,
+  summary:focus-visible,
   [role='button']:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 3px;
@@ -236,6 +237,11 @@
     text-transform: uppercase;
     color: var(--accent);
   }
+}
+
+/* ── Details chevron ───────────────────────────────────────────── */
+details[open] .details-chevron {
+  transform: rotate(180deg);
 }
 
 /* ── Fit bar (segmented) ───────────────────────────────────────── */

@@ -42,7 +42,7 @@ export default function OSPipelineStepper({ stages, currentCompany }: Props) {
                 <span className={`status-dot ${active ? 'bg-amber-400 animate-pulse' : done ? 'bg-emerald-400' : failed ? 'bg-red-400' : ''}`} />
               </div>
               <p className="text-xs font-semibold text-text-1 mt-3">{stage.label}</p>
-              <p className="text-[11px] text-text-3 mt-1 truncate" title={stage.message || stage.description}>
+              <p className="text-[11px] text-text-3 mt-1 line-clamp-2 leading-relaxed">
                 {stage.message || stage.description}
               </p>
             </div>

@@ -40,16 +40,17 @@ export default function PacketView({ company, packet, problems, people }: Props)
         <Score value={packet.qa_score ?? 0} label="QA " />
       </header>
 
-      <nav className="flex gap-5 px-5 sm:px-6 border-b border-border" aria-label="Packet sections">
+      <nav role="tablist" aria-label="Packet sections" className="flex gap-5 px-5 sm:px-6 border-b border-border">
         {(['overview', 'note', 'drafts'] as const).map(item => (
-          <button key={item} onClick={() => setTab(item)}
+          <button key={item} role="tab" id={`tab-${item}`} aria-selected={tab === item}
+            onClick={() => setTab(item)}
             className={`tab-btn capitalize ${tab === item ? 'tab-btn-active' : ''}`}>
             {item === 'note' ? 'Technical note' : item}
           </button>
         ))}
       </nav>
 
-      <div className="p-5 sm:p-6">
+      <div role="tabpanel" aria-labelledby={`tab-${tab}`} className="p-5 sm:p-6">
         {tab === 'overview' && (
           <div className="space-y-7">
             {packet.company_fit && (
@@ -106,7 +107,7 @@ export default function PacketView({ company, packet, problems, people }: Props)
                         </div>
                         <Score value={person.relevance_score} />
                       </div>
-                      <p className="text-xs text-text-3 leading-relaxed mt-3">{person.relevance_reason}</p>
+                      <p className="text-xs text-text-2 leading-relaxed mt-3">{person.relevance_reason}</p>
                       <div className="flex flex-wrap items-center gap-2 mt-3">
                         <span className="badge badge-accent">{person.proximity}</span>
                         {person.linkedin_url && <a href={person.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-xs text-amber-400 hover:text-amber-300">LinkedIn</a>}
@@ -130,22 +131,27 @@ export default function PacketView({ company, packet, problems, people }: Props)
         )}
 
         {tab === 'note' && (
-          <pre className="font-mono text-sm text-text-2 leading-relaxed whitespace-pre-wrap panel panel-raised p-5">
+          <pre className="font-mono text-sm text-text-2 leading-relaxed whitespace-pre-wrap panel panel-raised p-5 max-w-[72ch]">
             {packet.technical_note || 'No technical note generated yet.'}
           </pre>
         )}
 
         {tab === 'drafts' && (
           <div className="space-y-5">
-            {Object.entries(drafts).filter(([, text]) => text.trim()).map(([variant, text]) => (
-              <section key={variant}>
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <p className="section-head">{variant.replace('_', ' ')}</p>
-                  <span className="badge font-mono">{text.split(/\s+/).filter(Boolean).length}w</span>
-                </div>
-                <pre className="font-mono text-sm text-text-2 leading-relaxed whitespace-pre-wrap panel panel-raised p-4">{text}</pre>
-              </section>
-            ))}
+            {Object.entries(drafts).filter(([, text]) => text.trim()).map(([variant, text]) => {
+              const words = text.split(/\s+/).filter(Boolean).length
+              const over = words > 200
+              return (
+                <section key={variant}>
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <p className="section-head">{variant.replace('_', ' ')}</p>
+                    <span className={`badge font-mono ${over ? 'badge-error' : ''}`}>{words}w</span>
+                  </div>
+                  <pre className="font-mono text-sm text-text-2 leading-relaxed whitespace-pre-wrap panel panel-raised p-4">{text}</pre>
+                  {over && <p className="text-xs text-red-400 mt-2">Over 200 words. Edit before sending manually.</p>}
+                </section>
+              )
+            })}
             {Object.keys(drafts).length === 0 && <p className="text-sm text-text-3">No drafts generated yet.</p>}
           </div>
         )}
