@@ -53,7 +53,7 @@ export default function StrategyPanel({ strategy }: StrategyPanelProps) {
         <Row label="Target" value={strategy.target_role} accent />
         <Row label="Hook" value={strategy.hook} />
         <Row label="Icebreaker" value={strategy.icebreaker} />
-        <Row label="Suggested ask" value={strategy.suggested_ask} />
+        {strategy.suggested_ask && <Row label="Suggested ask" value={strategy.suggested_ask} />}
       </div>
     </div>
   )

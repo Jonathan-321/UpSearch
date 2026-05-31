@@ -24,6 +24,11 @@ const STATUS_CONFIG: Record<AgentStatus, { label: string; dot: string; badge: st
     dot: 'bg-emerald-400',
     badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
   },
+  error: {
+    label: 'Error',
+    dot: 'bg-red-400',
+    badge: 'bg-red-500/15 text-red-400 border-red-500/30',
+  },
 }
 
 export default function AgentCard({ name, description, icon, status, stat }: AgentCardProps) {
