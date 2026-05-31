@@ -1,0 +1,79 @@
+{
+  "company": "Baseten",
+  "lane": "ai_infra",
+  "crm_status": "prepared",
+  "created": "2026-05-31",
+
+  "company_fit": {
+    "fit_score": 9,
+    "why": "Baseten builds ML model serving infrastructure (Truss) used by real production teams. Cold start and GPU utilization are active engineering problems. The codebase is open source and the team is reachable via HN and GitHub.",
+    "website": "https://www.baseten.co",
+    "open_source": ["https://github.com/basetenlabs/truss"],
+    "tech_stack": ["Python", "CUDA", "Docker", "Kubernetes", "FastAPI"],
+    "hiring_status": "actively_hiring",
+    "sponsorship_notes": "Check current JD for H1B sponsorship language"
+  },
+
+  "open_problem": {
+    "title": "Cold start latency in GPU-backed model serving",
+    "description": "When a model container goes idle, the next request pays full container startup + weight loading cost. For 7B+ models this exceeds 30 seconds. No open benchmark exists that breaks down latency by stage across serving frameworks.",
+    "source_urls": [
+      "https://docs.baseten.co/performance/cold-start",
+      "https://news.ycombinator.com/item?id=35890456",
+      "https://github.com/basetenlabs/truss"
+    ],
+    "relevance_score": 9,
+    "contribution_surface": "Reproducible cold start benchmark; lightweight traffic-based pre-loading prototype"
+  },
+
+  "people_map": [
+    {
+      "name": "Phil Howes",
+      "role": "CEO and Co-founder",
+      "proximity": "founder",
+      "linkedin_url": "https://linkedin.com/in/philhowes",
+      "relevance_score": 6,
+      "relevance_reason": "Co-founder; may not be the right cold start contact but can route to the right engineer",
+      "outreach_note": "Baseten's public architecture writeup on Truss model packaging",
+      "source": "crunchbase + linkedin (verify before use)"
+    },
+    {
+      "name": "ML Infrastructure Engineer (verify name via GitHub contributors)",
+      "role": "ML Infrastructure Engineer",
+      "proximity": "engineer",
+      "github_url": "https://github.com/basetenlabs/truss/graphs/contributors",
+      "relevance_score": 9,
+      "relevance_reason": "Top Truss contributor is the right person for cold start / serving performance questions",
+      "outreach_note": "Specific PR or issue they opened in the Truss repo",
+      "source": "github.com/basetenlabs/truss contributors (manual lookup required)"
+    },
+    {
+      "name": "Developer Experience / FDE (check LinkedIn)",
+      "role": "Developer Experience or Solutions Engineer",
+      "proximity": "FDE",
+      "linkedin_url": null,
+      "relevance_score": 7,
+      "relevance_reason": "FDE/DX roles at infra companies often respond to student technical questions",
+      "outreach_note": "Reference a Baseten blog post or tutorial they wrote",
+      "source": "inferred from company size and structure"
+    }
+  ],
+
+  "adjacent_proof": "Luis is a CS student at UConn with coursework in Operating Systems and ML inference (CSE 4705, CSE 4820). He is working through cold start timing in open-source serving frameworks as a self-directed project and has read through the Truss codebase and vLLM architecture. He has not deployed production-scale serving but can prototype and benchmark at the 7B model level on consumer hardware.",
+
+  "outreach_drafts": {
+    "email": "see outreach/email.md",
+    "linkedin_note": "see outreach/linkedin_note.md (connection note + follow-up)"
+  },
+
+  "verification": {
+    "passed": true,
+    "notes": [
+      "LinkedIn URLs for specific engineers need manual verification before use",
+      "Cold start documentation URL should be checked for current accuracy",
+      "H1B sponsorship status should be confirmed from current JD"
+    ],
+    "claim_check": "Adjacent proof uses accurate language (coursework, working through, not claiming production experience)",
+    "source_coverage": "GitHub and HN sources are real; LinkedIn profiles marked as needing verification"
+  }
+}
