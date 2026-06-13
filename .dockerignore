@@ -1,0 +1,39 @@
+# ── Docker ignore — keep the image lean and credential-free ─────────────────
+
+# Source control
+.git/
+.gitignore
+
+# Credentials and secrets
+.env
+.env.*
+!env.example
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Local databases and state
+*.db
+*.db-*
+.upsearch/
+
+# Node (frontend)
+node_modules/
+frontend/
+
+# Documentation and generated artifacts
+docs/
+*.md
+!pyproject.toml
+
+# Tests
+tests/
+scripts/
+*.sh
+
+# macOS
+.DS_Store

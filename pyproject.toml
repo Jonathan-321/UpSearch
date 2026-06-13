@@ -10,6 +10,7 @@ dependencies = [
     "openai>=2.38.0",
     "pydantic>=2.13.4",
     "pydantic-settings>=2.14.1",
+    "pypdf>=6.13.2",
     "python-dotenv>=1.2.2",
     "requests>=2.34.2",
     "rich>=15.0.0",
@@ -29,6 +30,9 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 include = ["upsearch*", "agents*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
 
 [tool.setuptools]
 py-modules = ["db"]

@@ -1,0 +1,43 @@
+# ── UpSearch docker compose ───────────────────────────────────────────────────
+#
+# Start:
+#   docker compose up -d
+#
+# Stop:
+#   docker compose down
+#
+# View logs:
+#   docker compose logs -f
+#
+# No credentials are baked into the image. All sensitive config comes
+# from the host environment or a .env file.
+
+services:
+  upsearch:
+    build: .
+    image: upsearch:latest
+    container_name: upsearch
+    ports:
+      - "8000:8000"
+    volumes:
+      # Persistent state (SQLite + tracking)
+      - upsearch_data:/app/.upsearch
+    environment:
+      UPSEARCH_DIR: /app/.upsearch
+      UPSEARCH_DB_PATH: /app/.upsearch/opportunity_os.db
+      UPSEARCH_TRACKING_DIR: /app/.upsearch/runs
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      WANDB_API_KEY: ${WANDB_API_KEY:-}
+      UPSEARCH_STRONG_MODEL_PROVIDER: ${UPSEARCH_STRONG_MODEL_PROVIDER:-manual-review}
+      UPSEARCH_STRONG_MODEL: ${UPSEARCH_STRONG_MODEL:-not-configured}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/os/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  upsearch_data:
