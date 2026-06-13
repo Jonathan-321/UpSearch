@@ -1,0 +1,157 @@
+{
+  "description": "Offline QA benchmark — each entry is a packet dict and expected outcome.",
+  "entries": [
+    {
+      "id": "supported-claim-with-proof",
+      "label": "Claim backed by proof points passes",
+      "packet": {
+        "company": {"identity_status": "verified"},
+        "problems": [{"source_urls": ["https://example.com/problem"]}],
+        "people": [
+          {
+            "name": "Alice Engineer",
+            "verification_status": "verified",
+            "source_url": "https://linkedin.com/in/alice",
+            "linkedin_url": "https://linkedin.com/in/alice",
+            "relevance_score": 8
+          }
+        ],
+        "technical_note": "Acme uses custom CUDA kernels for inference.",
+        "adjacent_proof": "https://github.com/acme/kernels",
+        "outreach_drafts": {
+          "email": "Hi Alice\n\nI noticed your team's work on CUDA kernel optimization — we tackled similar memory layout challenges. Would love to compare notes.",
+          "linkedin_note": "Love the kernel work — brief note on a shared optimization challenge.",
+          "connection_followup": "Happy to share our approach if useful."
+        }
+      },
+      "profile": {"proof_points": ["Built a custom CUDA memory allocator"]},
+      "expected": {
+        "score_min": 6,
+        "score_max": 10,
+        "passed": true,
+        "allowed_flags": [],
+        "forbidden_flags_patterns": ["over 200", "Fabricated", "without evidence"]
+      }
+    },
+    {
+      "id": "unsupported-strong-claim",
+      "label": "Strong experience claim without proof is flagged",
+      "packet": {
+        "company": {"identity_status": "verified"},
+        "problems": [{"source_urls": ["https://example.com/problem"]}],
+        "people": [
+          {
+            "name": "Bob Builder",
+            "verification_status": "verified",
+            "source_url": "https://linkedin.com/in/bob"
+          }
+        ],
+        "technical_note": "Acme needs better CI/CD.",
+        "adjacent_proof": "",
+        "outreach_drafts": {
+          "email": "Hi Bob\n\nI built their entire deployment pipeline from scratch at my last company and can help you do the same.",
+          "linkedin_note": "I deployed similar infra for a competitor.",
+          "connection_followup": "Let me know if you need advice."
+        }
+      },
+      "profile": {"proof_points": []},
+      "expected": {
+        "score_min": 0,
+        "score_max": 5,
+        "passed": false,
+        "allowed_flags": ["strong claims", "I built", "without proof"],
+        "forbidden_flags_patterns": []
+      }
+    },
+    {
+      "id": "missing-sources",
+      "label": "Claims about the company with no URL backing are flagged",
+      "packet": {
+        "company": {"identity_status": "unverified"},
+        "problems": [{"source_urls": []}],
+        "people": [
+          {
+            "name": "Carol Coder",
+            "verification_status": "unverified",
+            "source_url": ""
+          }
+        ],
+        "technical_note": "Acme is supposedly the leader in AI widgets but I could not find any evidence of this.",
+        "adjacent_proof": "",
+        "outreach_drafts": {
+          "email": "Hi Carol\n\nI read about Acme's AI widgets and wanted to connect.",
+          "linkedin_note": "Heard great things about your widget team.",
+          "connection_followup": "Happy to chat."
+        }
+      },
+      "profile": {"proof_points": ["Some adjacent work"]},
+      "expected": {
+        "score_min": 0,
+        "score_max": 5,
+        "passed": false,
+        "allowed_flags": ["source", "unverified", "without verified evidence"],
+        "forbidden_flags_patterns": []
+      }
+    },
+    {
+      "id": "weak-people-evidence",
+      "label": "People without verified evidence or source URLs are flagged",
+      "packet": {
+        "company": {"identity_status": "verified"},
+        "problems": [{"source_urls": ["https://example.com/problem"]}],
+        "people": [
+          {
+            "name": "Dave Developer",
+            "verification_status": "unverified",
+            "source_url": ""
+          }
+        ],
+        "technical_note": "Acme's infrastructure runs on Kubernetes.",
+        "adjacent_proof": "",
+        "outreach_drafts": {
+          "email": "Hi Dave\n\nYour Kubernetes expertise sounds relevant to a project I'm working on.",
+          "linkedin_note": "Kubernetes scaling is challenging — let's chat.",
+          "connection_followup": "Always good to meet fellow K8s enthusiasts."
+        }
+      },
+      "profile": {"proof_points": ["Kubernetes contributor"]},
+      "expected": {
+        "score_min": 0,
+        "score_max": 5,
+        "passed": false,
+        "allowed_flags": ["without verified evidence", "unverified", "verification"],
+        "forbidden_flags_patterns": []
+      }
+    },
+    {
+      "id": "overlong-outreach",
+      "label": "Email body over 200 words is flagged",
+      "packet": {
+        "company": {"identity_status": "verified"},
+        "problems": [{"source_urls": ["https://example.com/problem"]}],
+        "people": [
+          {
+            "name": "Eve Expert",
+            "verification_status": "verified",
+            "source_url": "https://linkedin.com/in/eve"
+          }
+        ],
+        "technical_note": "Acme uses a custom LLM serving stack.",
+        "adjacent_proof": "",
+        "outreach_drafts": {
+          "email": "Hi Eve\n\nThis is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email. This is a very long email.",
+          "linkedin_note": "Quick note on LLM serving.",
+          "connection_followup": "Let's connect."
+        }
+      },
+      "profile": {"proof_points": ["LLM serving experience"]},
+      "expected": {
+        "score_min": 0,
+        "score_max": 5,
+        "passed": false,
+        "allowed_flags": ["over 200"],
+        "forbidden_flags_patterns": []
+      }
+    }
+  ]
+}

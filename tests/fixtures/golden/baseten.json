@@ -1,0 +1,59 @@
+{
+  "company_name": "Baseten",
+  "company": {
+    "identity_status": "verified",
+    "website": "https://www.baseten.co",
+    "official_domain": "baseten.co",
+    "what_they_do": "ML inference serving platform — deploys, scales, and monitors models as production APIs"
+  },
+  "problems": [
+    {
+      "title": "Cold-start latency for large model containers on serverless GPU infrastructure",
+      "description": "Baseten serves ML models through a serverless GPU architecture. Loading large model weights (10GB+) from cold storage on first invocation causes multi-minute latency, which breaks real-time inference SLAs and discourages latency-sensitive use cases. This is a well-documented challenge for serverless ML platforms.",
+      "relevance_score": 8,
+      "source_urls": [
+        "https://docs.baseten.co/performance/optimize",
+        "https://www.baseten.co/blog/"
+      ]
+    },
+    {
+      "title": "GPU memory fragmentation across concurrent model deployments",
+      "description": "When multiple model versions or tenants share GPU memory, allocation fragmentation reduces throughput and increases OOM failures. This is a systemic issue in multi-tenant ML serving.",
+      "relevance_score": 7,
+      "source_urls": [
+        "https://docs.baseten.co/architecture"
+      ]
+    }
+  ],
+  "people": [
+    {
+      "name": "Tero Karras",
+      "role": "Software Engineer",
+      "relevance_reason": "Leads engineering efforts on the core inference serving stack",
+      "verification_status": "verified",
+      "source_url": "https://www.baseten.co/author/tero-karras/",
+      "relevance_score": 9,
+      "proximity": "engineer"
+    },
+    {
+      "name": "Bola Malek",
+      "role": "Founder & CEO",
+      "relevance_reason": "CEO — sets technical direction for the platform",
+      "verification_status": "verified",
+      "source_url": "https://www.baseten.co/author/bola-malek/",
+      "relevance_score": 7,
+      "proximity": "leadership"
+    }
+  ],
+  "packet": {
+    "technical_note": "## Technical Deep-Dive: Cold-Start Optimization for Baseten\n\n### Problem\nBaseten's serverless GPU architecture loads model weights from cloud storage on first invocation. For large models (LLMs, diffusion models), this cold start can take several minutes.\n\n### Build Plan\n1. Implement model weight prefetching using a warm-pool strategy that keeps frequently-used model shards in GPU memory across invocations.\n2. Use incremental loading with priority-based weight ordering — load critical layers first, defer non-essential parameters.\n3. Evaluate model quantization (FP16/INT8) to reduce memory footprint for cold-start paths.\n\n### Success Criteria\n- Cold-start latency under 5 seconds for models up to 7B parameters\n- No regression in steady-state inference throughput\n- Memory overhead from warm pools stays under 20% of available GPU memory\n\n### Adjacent Work\nhttps://github.com/basetenlabs/truss — the open-source model serving framework. Understanding its container boot sequence is the first step.",
+    "adjacent_proof": "https://github.com/basetenlabs/truss",
+    "outreach_drafts": {
+      "email": "Hi Tero\n\nI've been looking at cold-start latency in serverless GPU inference and noticed Baseten's architecture loads full model weights from cloud storage on each new invocation. For large models this can take minutes under load.\n\nI have experience with warm-pool prefetching strategies — I worked on a similar approach for PyTorch model serving that cut cold starts from 90s to under 3s. Happy to share the approach if it's useful.\n\nBest,\nUpSearch User",
+      "linkedin_note": "Love the work on Baseten's inference stack. I've been thinking about cold-start optimizations for serverless GPU — would be great to compare notes.",
+      "connection_followup": "Following up on the cold-start work. Happy to share details if useful."
+    },
+    "qa_score": 8,
+    "qa_flags": []
+  }
+}

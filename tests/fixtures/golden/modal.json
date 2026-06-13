@@ -1,0 +1,59 @@
+{
+  "company_name": "Modal",
+  "company": {
+    "identity_status": "verified",
+    "website": "https://modal.com",
+    "official_domain": "modal.com",
+    "what_they_do": "Cloud compute platform for generative AI and batch processing — runs Python code in the cloud with GPU, CPU, and serverless containers"
+  },
+  "problems": [
+    {
+      "title": "Ephemeral GPU allocation overhead for short-lived batch jobs",
+      "description": "Modal's serverless GPU architecture allocates and deallocates GPU instances per function call. For short batch jobs (seconds to minutes), the allocation overhead can exceed actual compute time, making the platform inefficient for workloads with many small invocations.",
+      "relevance_score": 8,
+      "source_urls": [
+        "https://modal.com/docs/guide/gpu",
+        "https://modal.com/docs/guide/cold-start"
+      ]
+    },
+    {
+      "title": "Lack of persistent storage semantics between function invocations",
+      "description": "Modal's stateless function model means intermediate results must be manually persisted to cloud storage between steps. For multi-stage ML pipelines, this adds complexity and latency compared to stateful execution environments.",
+      "relevance_score": 7,
+      "source_urls": [
+        "https://modal.com/docs/guide/volumes"
+      ]
+    }
+  ],
+  "people": [
+    {
+      "name": "Erik Bernhardsson",
+      "role": "Founder & CEO",
+      "relevance_reason": "CEO and founder — sets technical direction for the platform architecture",
+      "verification_status": "verified",
+      "source_url": "https://github.com/erikbern",
+      "relevance_score": 9,
+      "proximity": "leadership"
+    },
+    {
+      "name": "Shagun Sodhani",
+      "role": "Engineer",
+      "relevance_reason": "Works on the core GPU scheduling and serverless infrastructure",
+      "verification_status": "verified",
+      "source_url": "https://github.com/shagunsodhani",
+      "relevance_score": 8,
+      "proximity": "engineer"
+    }
+  ],
+  "packet": {
+    "technical_note": "## Technical Deep-Dive: GPU Allocation Optimization for Modal\n\n### Problem\nModal's serverless GPU model spins up a fresh GPU container for each function invocation. For short jobs (e.g., single inference calls, small batch transforms), the GPU allocation overhead (container init + model loading) often exceeds compute time.\n\n### Build Plan\n1. Implement a GPU warm-pool that keeps GPU instances warm for a configurable TTL after a function completes, accepting a small idle cost for zero cold-start on subsequent invocations.\n2. Enable function-level GPU allocation hints that let users specify expected duration so Modal can bin-pack short and long jobs efficiently.\n3. Add a lightweight keep-warm mechanism via synthetic health-check pings from the Modal client SDK.\n\n### Success Criteria\n- Cold-start GPU allocation under 500ms for warm-pool invocations\n- Idle GPU cost under 10% of total compute spend for typical usage patterns\n- Zero user-facing API changes — keep-warm is opt-in through app configuration\n\n### Adjacent Work\nhttps://github.com/erikbern/ann-benchmarks — Erik's work on approximate nearest neighbor benchmarks. The benchmarking infrastructure demonstrates the kind of batch GPU workload that would benefit most from allocation optimization.",
+    "adjacent_proof": "https://github.com/erikbern/ann-benchmarks",
+    "outreach_drafts": {
+      "email": "Hi Erik\n\nI've been evaluating Modal for batch ML inference workloads and noticed the GPU allocation overhead on short-lived invocations. For workloads with many small function calls, the container init time can dominate end-to-end latency.\n\nI've worked on GPU warm-pool strategies for serverless inference platforms — keeping instances alive for a configurable TTL after a function completes. Happy to share what I've learned if it's useful for Modal's roadmap.\n\nBest,\nUpSearch User",
+      "linkedin_note": "Modal's serverless GPU model is fascinating. I'd love to discuss GPU allocation optimization for short-lived batch jobs.",
+      "connection_followup": "Following up on the GPU warm-pool idea. Happy to share more details."
+    },
+    "qa_score": 8,
+    "qa_flags": []
+  }
+}
