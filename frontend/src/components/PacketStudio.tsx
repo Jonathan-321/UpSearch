@@ -3,6 +3,7 @@ import OSSearchPanel from './OSSearchPanel'
 import CRMTable from './CRMTable'
 import PacketView from './PacketView'
 import ApprovalQueue from './ApprovalQueue'
+import ProfilePanel from './ProfilePanel'
 import type { LogEntry } from '../types'
 import { useOS, type OSStage } from '../hooks/useOS'
 
@@ -11,13 +12,6 @@ const STUDIO_STEPS = [
   { number: '02', label: 'Build', detail: 'problem, people, artifact' },
   { number: '03', label: 'Verify', detail: 'claims, tone, evidence' },
   { number: '04', label: 'Approve', detail: 'exact action gate' },
-]
-
-const RUN_STRIP = [
-  { company: 'Baseten', lane: 'Inference systems', status: 'Now playing' },
-  { company: 'Modal', lane: 'Serverless GPUs', status: 'Play next' },
-  { company: 'Fireworks', lane: 'LoRA deployment', status: 'Play next' },
-  { company: 'Together', lane: 'Speculative decoding', status: 'Play next' },
 ]
 
 function stageCopy(stage: OSStage | undefined) {
@@ -122,38 +116,66 @@ function PacketPlaceholder({ currentCompany, running }: { currentCompany: string
   )
 }
 
-function RunStrip({ onSelect }: { onSelect: (company: string) => void }) {
-  return (
-    <section className="run-strip" aria-label="Packet replay queue">
-      {RUN_STRIP.map((run, index) => (
-        <button key={run.company} type="button" onClick={() => onSelect(run.company)} className="run-card">
-          <span className="run-index">{String(index + 1).padStart(2, '0')}</span>
-          <div>
-            <p>{run.status}</p>
-            <h3>{run.company}</h3>
-            <span>{run.lane}</span>
-          </div>
-          <span className="run-play" aria-hidden="true">▶</span>
-        </button>
-      ))}
-    </section>
-  )
+function profileClaimWarnings(packetText: string, profileText: string, proofBank: string[]): string[] {
+  const normalizedProfile = `${profileText}\n${proofBank.join('\n')}`.toLowerCase()
+  const normalizedPacket = packetText.toLowerCase()
+  const warnings: string[] = []
+
+  const staleMarkers = ['luis', 'uconn', 'luis mendez']
+  staleMarkers.forEach(marker => {
+    if (normalizedPacket.includes(marker) && !normalizedProfile.includes(marker)) {
+      warnings.push(`Packet mentions "${marker}" but the current profile does not.`)
+    }
+  })
+
+  const proofPhrases = ['undergraduate project', 'completed coursework', 'have prototyped', "i've been building", 'worked on']
+  proofPhrases.forEach(phrase => {
+    if (normalizedPacket.includes(phrase) && !normalizedProfile.includes(phrase)) {
+      warnings.push(`Packet uses a proof claim like "${phrase}" that is not directly present in the profile evidence.`)
+    }
+  })
+
+  return Array.from(new Set(warnings)).slice(0, 3)
 }
 
 export default function PacketStudio() {
   const {
     running, stages, companies, currentCompany, currentPacket,
-    pendingMessages, error, logEntries,
-    buildPacket, fetchCompanies, fetchPending, approveMessage, selectCompany,
+    pendingMessages, profileText, profile, profileHarness, profileFetching, error, logEntries,
+    buildPacket, fetchCompanies, fetchPending, fetchProfile, saveProfile, fetchProfileSources,
+    approveMessage, rejectMessage, recordDelivery, scheduleFollowUp, updateFollowUp, selectCompany,
   } = useOS()
 
   useEffect(() => {
     fetchCompanies()
     fetchPending()
-  }, [fetchCompanies, fetchPending])
+    fetchProfile()
+  }, [fetchCompanies, fetchPending, fetchProfile])
+
+  useEffect(() => {
+    if (currentCompany || companies.length === 0) return
+    const preferred = companies.find(company => company.name === 'Baseten') ?? companies[0]
+    selectCompany(preferred.name)
+  }, [companies, currentCompany, selectCompany])
 
   const doneCount = stages.filter(stage => stage.status === 'complete').length
   const activeStage = stages.find(stage => stage.status === 'running') || [...stages].reverse().find(stage => stage.status === 'complete')
+  const packetText = currentPacket?.packet
+    ? [
+        currentPacket.packet.company_fit,
+        currentPacket.packet.adjacent_proof,
+        currentPacket.packet.technical_note,
+        currentPacket.packet.outreach_drafts,
+      ].join('\n')
+    : ''
+  const packetWarnings = currentPacket?.packet
+    ? profileClaimWarnings(packetText, profileText, profileHarness?.proof_bank ?? [])
+    : []
+  // Identity gate failed for the loaded packet: the PacketView status card owns
+  // that state, so the page-level review banner and score chips stand down.
+  const packetIdentityBlocked =
+    currentPacket?.packet?.crm_status === 'identity_blocked' ||
+    currentPacket?.checkup?.failure_category === 'identity_blocked'
 
   return (
     <div className="packet-studio">
@@ -163,7 +185,7 @@ export default function PacketStudio() {
           <h1>Watch a technical opportunity packet assemble from public signal.</h1>
           <p>
             Source the company, isolate a real problem, map the right people, write the artifact,
-            verify the claims, and hold every external action behind approval.
+            verify the claims, then hand off LinkedIn or Gmail only after the exact action is approved.
           </p>
         </div>
 
@@ -187,9 +209,18 @@ export default function PacketStudio() {
 
         <OSSearchPanel onBuild={buildPacket} isRunning={running} />
 
-        {error && (
+        <ProfilePanel
+          content={profileText}
+          profile={profile}
+          harness={profileHarness}
+          fetching={profileFetching}
+          onSave={saveProfile}
+          onFetchSources={fetchProfileSources}
+        />
+
+        {error && !(packetIdentityBlocked && error.startsWith('Review required:')) && (
           <div className="studio-error">
-            {error}. Make sure uvicorn is running on port 8000.
+            {error}{error.startsWith('Review required:') ? '' : '. Make sure uvicorn is running on port 8000.'}
           </div>
         )}
 
@@ -204,18 +235,32 @@ export default function PacketStudio() {
               </div>
               <div className="studio-canvas-actions">
                 <span>{currentPacket?.packet?.crm_status?.replace('_', ' ') || 'draft'}</span>
-                <span>QA {currentPacket?.packet?.qa_score ?? '--'}/10</span>
+                <span>Checkup {packetIdentityBlocked ? '—' : `${currentPacket?.checkup?.overall_score ?? '--'}/10`}</span>
+                <span>QA {packetIdentityBlocked ? '—' : `${currentPacket?.packet?.qa_score ?? '--'}/10`}</span>
               </div>
             </div>
 
             <div className="studio-canvas-body">
               {currentPacket?.packet ? (
-                <PacketView
-                  company={currentCompany}
-                  packet={currentPacket.packet}
-                  problems={currentPacket.problems}
-                  people={currentPacket.people}
-                />
+                <>
+                  {packetWarnings.length > 0 && (
+                    <div className="studio-warning">
+                      <strong>Profile proof warning</strong>
+                      <p>{packetWarnings.join(' ')}</p>
+                    </div>
+                  )}
+                  <PacketView
+                    company={currentCompany}
+                    packet={currentPacket.packet}
+                    problems={currentPacket.problems}
+                    people={currentPacket.people}
+                    checkup={currentPacket.checkup}
+                    qa={currentPacket.qa}
+                    companyRecord={currentPacket.company ?? null}
+                    onRebuild={() => buildPacket(currentCompany, currentPacket.company?.lane ?? 'ai_infra')}
+                    rebuildRunning={running}
+                  />
+                </>
               ) : (
                 <PacketPlaceholder currentCompany={currentCompany} running={running} />
               )}
@@ -224,13 +269,20 @@ export default function PacketStudio() {
 
           <StreamPanel entries={logEntries} running={running} activeStage={activeStage} />
         </div>
-
-        <RunStrip onSelect={selectCompany} />
       </section>
 
       <section className="studio-lower-grid">
         <CRMTable companies={companies} currentCompany={currentCompany} onSelect={selectCompany} />
-        <ApprovalQueue messages={pendingMessages} onApprove={approveMessage} />
+        <ApprovalQueue
+          messages={pendingMessages}
+          packetPeople={currentPacket?.people ?? []}
+          packetCompany={currentCompany}
+          onApprove={approveMessage}
+          onReject={rejectMessage}
+          onRecordDelivery={recordDelivery}
+          onScheduleFollowUp={scheduleFollowUp}
+          onUpdateFollowUp={updateFollowUp}
+        />
       </section>
     </div>
   )
