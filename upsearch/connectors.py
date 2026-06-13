@@ -6,10 +6,16 @@ what action is allowed; a connector should only expose what it can do.
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass, field
 from enum import StrEnum
 
 from .schemas import ApprovalStatus, ExternalAction, OutreachChannel
+
+
+def body_digest(content: str) -> str:
+    """Return a SHA-256 hex digest of message content for approval binding."""
+    return hashlib.sha256(content.encode("utf-8")).hexdigest()
 
 
 class ConnectorKind(StrEnum):
@@ -77,7 +83,8 @@ class ApprovalDecision:
 class ApprovalGate:
     """Block risky actions unless the exact action has approval."""
 
-    def validate(self, intent: ActionIntent, decision: ApprovalDecision | None) -> None:
+    def validate(self, intent: ActionIntent, decision: ApprovalDecision | None,
+                 decision_digest: str | None = None) -> None:
         if intent.risk in {ActionRisk.READ_ONLY, ActionRisk.LOCAL_WRITE}:
             return
 
@@ -99,6 +106,15 @@ class ApprovalGate:
             raise PermissionError("Approved body does not match requested action.")
         if approved.scheduled_for != intent.scheduled_for:
             raise PermissionError("Approved schedule does not match requested action.")
+
+        # If a body digest was stored at approval time, verify the body hasn't changed
+        if decision_digest and intent.body is not None:
+            current_digest = body_digest(intent.body)
+            if current_digest != decision_digest:
+                raise PermissionError(
+                    "Message body has changed since approval. "
+                    f"Digest mismatch: stored={decision_digest[:12]}, current={current_digest[:12]}"
+                )
 
 
 def default_connector_profiles() -> list[ConnectorProfile]:

@@ -1,20 +1,28 @@
 """
 QA Agent — checks sources, claims, word count, tone, and unsupported experience claims.
 Runs before any packet is marked ready for outreach.
+
+Journey-heavy verification uses qa_execution.qa_verify(), which respects the
+configured strong model route and signals degraded mode when the strong model
+is unavailable. Deterministic rule checks always run first.
 """
 import re
-from upsearch import llm
-from upsearch.json_utils import parse_model_json_object
+from upsearch.config import load_settings
+from upsearch.model_router import ModelRouter, TaskType
+from upsearch.qa_execution import qa_verify
 
 SYSTEM = """You are a QA Agent for an outreach packet. Check for:
 1. Fabricated experience — phrases like "I built", "I deployed", "I worked on" without proof
 2. Missing sources — claims about the company with no URL backing
 3. Inflated language — "passionate", "excited to connect", "synergy", etc.
 4. Word count violations — email body over 200 words
-5. Unsourced people — people listed without public profile links
+5. Unverified people — people without a fetched source that passed the
+   name + company + role/relevance evidence contract
 6. Generic icebreakers — openers that could apply to any company/person
 
 Score the overall packet 1-10. Pass threshold is 6.
+Use the provided people source lines and verification status. A URL alone is not
+evidence. Only ``verification_status=verified`` counts as a verified person.
 
 Respond with valid JSON only:
 {
@@ -30,10 +38,14 @@ Respond with valid JSON only:
 def run(packet: dict, user_profile: dict) -> dict:
     # Rule-based checks first (fast, deterministic)
     flags = []
-    all_drafts = "\n\n".join(packet.get("outreach_drafts", {}).values())
+    drafts = {
+        str(key): value if isinstance(value, str) else ""
+        for key, value in (packet.get("outreach_drafts") or {}).items()
+    }
+    all_drafts = "\n\n".join(value for value in drafts.values() if value)
 
     # Word count check (email body)
-    email_draft = packet.get("outreach_drafts", {}).get("email", "")
+    email_draft = drafts.get("email", "")
     email_body = "\n".join(email_draft.splitlines()[2:]) if "\n\n" in email_draft else email_draft
     word_count = len(email_body.split())
     if word_count > 200:
@@ -56,28 +68,59 @@ def run(packet: dict, user_profile: dict) -> dict:
         r"\bI (built|deployed|shipped|led|managed|owned|ran|architected)\b",
         all_drafts, re.IGNORECASE
     )
-    proof_points = user_profile.get("proof_points", [])
+    proof_points = [
+        str(item).strip()
+        for item in user_profile.get("proof_points", [])
+        if str(item).strip()
+    ]
     if strong_claims and not proof_points:
         flags.append(f"Strong experience claims without proof: {', '.join(set(strong_claims))}")
 
     # People source check
     people = packet.get("people", [])
-    people_without_source = [p["name"] for p in people if not p.get("linkedin_url") and not p.get("github_url")]
-    if people_without_source:
-        flags.append(f"People without verified profiles: {', '.join(people_without_source[:3])}")
+    people_without_verified_evidence = [
+        p.get("name", "?") for p in people
+        if p.get("verification_status") != "verified" or not p.get("source_url")
+    ]
+    if people_without_verified_evidence:
+        flags.append(
+            "People without verified evidence: "
+            f"{', '.join(people_without_verified_evidence[:3])}"
+        )
+
+    people_source_lines = "\n".join(
+        (
+            f"- {p.get('name', '?')}: status={p.get('verification_status', 'unverified')}; "
+            f"evidence={p.get('source_url') or 'missing'}; "
+            f"contact={p.get('linkedin_url') or p.get('github_url') or p.get('twitter_url') or 'none'}"
+        )
+        for p in people
+    )
+
+    # Build known proof bank from enriched profile
+    proof_bank_text = ""
+    if proof_points:
+        proof_bank_text = "User proof points:\n" + "\n".join(f"- {p}" for p in proof_points[:6])
 
     # LLM quality check
     packet_summary = (
         f"Technical note excerpt:\n{packet.get('technical_note', '')[:600]}\n\n"
         f"Email draft:\n{email_draft[:600]}\n\n"
+        f"People source lines:\n{people_source_lines}\n\n"
         f"Adjacent proof: {packet.get('adjacent_proof', '')}\n\n"
+        f"{proof_bank_text}\n\n"
         f"Rule-based flags already found: {flags}"
     )
-    llm_result_text = llm.complete(system=SYSTEM, user=packet_summary, max_tokens=512)
-
-    llm_result = parse_model_json_object(
-        llm_result_text,
-        {"passed": False, "score": 4, "flags": ["QA parse error"]},
+    route = ModelRouter(load_settings()).route(TaskType.VERIFICATION)
+    # Reasoning models (e.g. deepseek-r1) spend output tokens on thinking
+    # before the JSON verdict; 512 starves them into empty/truncated output
+    # and a parse-error default instead of a real evaluation.
+    llm_result, degraded_mode = qa_verify(
+        route,
+        system=SYSTEM,
+        user_prompt=packet_summary,
+        rule_flags=flags,
+        max_tokens=2048,
     )
 
     # Merge rule-based flags with LLM flags
@@ -93,11 +136,19 @@ def run(packet: dict, user_profile: dict) -> dict:
         "recommendations": llm_result.get("recommendations", []),
         "claim_check": llm_result.get("claim_check", ""),
         "source_coverage": llm_result.get("source_coverage", ""),
+        "model_route": {
+            "provider": route.provider,
+            "model": route.model,
+            "configured": route.configured,
+            "is_fallback": route.is_fallback,
+            "degraded_mode": degraded_mode,
+            "reason": route.reason,
+        },
         "rule_checks": {
             "word_count": word_count,
             "has_buzzwords": bool(buzzwords),
             "has_dashes": "—" in all_drafts or "–" in all_drafts,
             "strong_claims": list(set(strong_claims)),
-            "unsourced_people": people_without_source,
+            "unsourced_people": people_without_verified_evidence,
         },
     }

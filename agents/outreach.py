@@ -30,6 +30,11 @@ Respond with valid JSON only:
 }"""
 
 
+def _normalize_draft(value: str) -> str:
+    value = value.replace("—", " - ").replace("–", " - ")
+    return "\n".join(" ".join(line.split()) for line in value.splitlines()).strip()
+
+
 def run(
     company_name: str,
     problem: dict,
@@ -57,6 +62,15 @@ def run(
         max_tokens=1200,
     )
     result = parse_model_json_object(text)
+    # Models sometimes emit null or non-string variants; drafts must be
+    # non-empty strings or downstream persistence and review break. The
+    # prompt forbids em/en-dashes but models still emit them, so normalize
+    # deterministically instead of re-asking the model.
+    result = {
+        key: _normalize_draft(value)
+        for key, value in (result or {}).items()
+        if isinstance(value, str) and value.strip()
+    }
     if not result:
         result = {"email": text, "linkedin_note": "", "connection_followup": ""}
 

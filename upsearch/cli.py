@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 from dataclasses import asdict
 from pathlib import Path
 
 from .config import load_settings
 from .connectors import default_connector_profiles
-from .harnessed_orchestrator import run_harnessed_packet, report
 from .model_router import ModelRouter, TaskType
+from .orchestrator_service import run_pipeline
 from .schemas import AgentRunRecord
 from .seed_packets import build_baseten_seed_packet
 from .tracking import RunLogger
@@ -110,7 +111,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     run_packet = subparsers.add_parser(
         "run",
-        help="Run the full harnessed packet workflow for a company (Profile → Company → Problem → People → Note → Outreach → QA → DB).",
+        help="Run the unified packet workflow for a company (Profile → Company → Problem → People → Note → Outreach → QA → DB).",
     )
     run_packet.add_argument("--company", required=True, help="Company name, e.g. Baseten")
     run_packet.add_argument("--lane", default="ai_infra",
@@ -138,12 +139,19 @@ def main() -> None:
 
     if args.command == "run":
         profile_text = Path(args.profile).read_text(encoding="utf-8") if Path(args.profile).exists() else ""
-        ctx = run_harnessed_packet(
-            company_name=args.company,
-            lane=args.lane,
-            profile_text=profile_text,
+        result = asyncio.run(
+            run_pipeline(
+                company_name=args.company,
+                lane=args.lane,
+                profile_text=profile_text,
+            )
         )
-        print(report(ctx))
+        print(f"Packet complete: {result.company_name} ({result.lane})")
+        print(f"  Run ID: {result.run_id}")
+        print(f"  Status: {result.status}")
+        print(f"  Problems found: {len(result.problems)}")
+        print(f"  People mapped: {len(result.people)}")
+        print(f"  QA score: {result.qa_result.get('score', 0)}/10")
         return
 
     parser.error(f"Unknown command: {args.command}")

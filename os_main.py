@@ -8,9 +8,6 @@ Commands:
   python os_main.py show    --company baseten
   python os_main.py approve [--company baseten]
   python os_main.py crm     [--due-today]
-
-The original UpSearch quick-search pipeline is still available via:
-  python main.py --mode jobs --topic "..."
 """
 import argparse
 import json

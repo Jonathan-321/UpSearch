@@ -5,6 +5,7 @@ Output: ranked list of specific, source-backed problem briefs.
 from upsearch import llm
 from upsearch.json_utils import parse_model_json_object
 from upsearch.sourcing import hackernews, reddit
+from upsearch.sourcing.web_search import search_company_problems, search_company_blog
 
 SYSTEM = """You are a Problem Agent. Given a company brief and public source material,
 identify specific open technical problems this team appears to care about.
@@ -33,12 +34,44 @@ def run(company_name: str, company_record: dict, user_profile: dict) -> dict:
 
     hn_posts = hackernews.search(f"{company_name} problems engineering", limit=5)
     reddit_posts = reddit.search(f"{company_name} technical issues", limit=3)
+    domain = company_record.get("official_domain", "") or company_record.get("website", "")
+    lane_phrase = str(company_record.get("lane", "")).replace("_", " ")
+    web_results = search_company_problems(company_name, lane_phrase)
+    blog_results = search_company_blog(company_name, domain)
     all_posts = hn_posts + reddit_posts
 
-    source_text = "\n".join(
-        f"[{p.source}] {p.title}\n{p.body[:300]}\nURL: {p.url}"
+    # Every retrieval channel feeds one catalog: discussion posts, web search,
+    # and site-specific blog search. The model may cite only catalog URLs, and
+    # the same URLs are reported upstream as retrieved source candidates —
+    # web/blog results are retrieval output, not model-asserted links.
+    catalog_entries = [
+        {"source": p.source, "title": p.title, "body": p.body[:300], "url": p.url}
         for p in all_posts[:6]
-    ) if all_posts else "No recent public discussions found."
+        if p.url
+    ]
+    catalog_entries += [
+        {"source": "web_search", "title": str(item.get("title", ""))[:160], "body": "", "url": item.get("url", "")}
+        for item in web_results[:4]
+        if item.get("url")
+    ]
+    catalog_entries += [
+        {"source": "company_blog", "title": str(item.get("title", ""))[:160], "body": "", "url": item.get("url", "")}
+        for item in blog_results[:4]
+        if item.get("url")
+    ]
+    source_catalog = []
+    seen_urls: set[str] = set()
+    for entry in catalog_entries:
+        if entry["url"] in seen_urls:
+            continue
+        seen_urls.add(entry["url"])
+        source_catalog.append({"id": f"S{len(source_catalog) + 1}", **entry})
+    allowed_urls = {item["url"] for item in source_catalog}
+
+    source_text = "\n".join(
+        f"{item['id']} [{item['source']}] {item['title']}\n{item['body']}\nURL: {item['url']}".replace("\n\n", "\n")
+        for item in source_catalog
+    ) if source_catalog else "No recent public discussions found."
 
     text = llm.complete(
         system=SYSTEM,
@@ -46,19 +79,21 @@ def run(company_name: str, company_record: dict, user_profile: dict) -> dict:
             f"Company: {company_name}\n"
             f"What they do: {what_they_do}\n"
             f"Tech stack: {tech_stack}\n\n"
-            f"Public signal:\n{source_text}\n\n"
+            f"Public signal catalog. Use only these exact URLs as source_urls:\n{source_text}\n\n"
             f"Student skills: {', '.join(user_profile.get('skills', []))}"
         ),
         max_tokens=1024,
     )
     result = parse_model_json_object(text, {"problems": []})
+    result["problems"] = _sanitize_problems(result.get("problems", []), allowed_urls)
     if not result.get("problems"):
-        result = {"problems": [_fallback_problem(company_name, company_record, all_posts)]}
+        fallback = _fallback_problem(company_name, company_record, all_posts)
+        result = {"problems": [fallback] if fallback.get("source_urls") else []}
 
     return {
         "result": result,
-        "source_urls": [p.url for p in all_posts],
-        "confidence": 0.65 if all_posts else 0.4,
+        "source_urls": [item["url"] for item in source_catalog],
+        "confidence": 0.65 if source_catalog else 0.4,
         "assumptions": ["Problem list based on public signal; direct company contact may reveal different priorities"],
         "next_action": "run_people_agent",
     }
@@ -75,7 +110,7 @@ def _fallback_problem(company_name: str, company_record: dict, public_posts: lis
     tech_stack = ", ".join(company_record.get("tech_stack", [])[:5])
     urls = [p.url for p in public_posts if getattr(p, "url", "")]
     website = company_record.get("website")
-    if website:
+    if website and company_record.get("identity_status") == "verified":
         urls.append(website)
 
     focus = "production inference reliability and evaluation"
@@ -99,3 +134,23 @@ def _fallback_problem(company_name: str, company_record: dict, public_posts: lis
         "relevance_score": 6,
         "contribution_surface": "Build a small benchmark, router, validator, or report generator that makes the system tradeoff measurable.",
     }
+
+
+def _sanitize_problems(problems: list, allowed_urls: set[str]) -> list[dict]:
+    """Keep only model problems backed by URLs that were actually retrieved."""
+    if not isinstance(problems, list):
+        return []
+    sanitized: list[dict] = []
+    for item in problems:
+        if not isinstance(item, dict):
+            continue
+        urls = item.get("source_urls", [])
+        if not isinstance(urls, list):
+            urls = []
+        valid_urls = [url for url in urls if isinstance(url, str) and url in allowed_urls]
+        if not valid_urls:
+            continue
+        next_item = dict(item)
+        next_item["source_urls"] = list(dict.fromkeys(valid_urls))
+        sanitized.append(next_item)
+    return sanitized

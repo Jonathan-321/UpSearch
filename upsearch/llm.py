@@ -1,6 +1,7 @@
 """
-LLM abstraction layer — routes calls to Claude Opus 4.8 or DeepSeek.
-Switch provider by setting MODEL_PROVIDER=claude or MODEL_PROVIDER=deepseek in .env.
+LLM abstraction layer — routes calls to Claude Opus 4.8, DeepSeek, or OpenRouter.
+Switch provider by setting MODEL_PROVIDER=claude, MODEL_PROVIDER=deepseek, or
+MODEL_PROVIDER=openrouter in .env.
 """
 import os
 
@@ -9,6 +10,7 @@ PROVIDER = os.environ.get("MODEL_PROVIDER", "claude").lower()
 # Model identifiers
 CLAUDE_MODEL = "claude-opus-4-8"
 DEEPSEEK_MODEL = "deepseek-chat"  # or "deepseek-reasoner" for harder reasoning tasks
+OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "deepseek/deepseek-chat")
 
 
 def _claude_client():
@@ -24,22 +26,40 @@ def _deepseek_client():
     )
 
 
+def _openrouter_client():
+    from openai import OpenAI
+    return OpenAI(
+        api_key=os.environ.get("OPENROUTER_API_KEY"),
+        base_url="https://openrouter.ai/api/v1",
+    )
+
+
+def _openai_compatible_route():
+    """(client, model) for OpenAI-compatible providers, or None for Claude."""
+    if PROVIDER == "deepseek":
+        return _deepseek_client(), DEEPSEEK_MODEL
+    if PROVIDER == "openrouter":
+        return _openrouter_client(), OPENROUTER_MODEL
+    return None
+
+
 def complete(system: str, user: str, max_tokens: int = 1024) -> str:
     """
     Single-turn completion. Returns the assistant response as a plain string.
     Works identically regardless of provider.
     """
-    if PROVIDER == "deepseek":
-        client = _deepseek_client()
+    compat = _openai_compatible_route()
+    if compat:
+        client, model = compat
         response = client.chat.completions.create(
-            model=DEEPSEEK_MODEL,
+            model=model,
             max_tokens=max_tokens,
             messages=[
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},
             ],
         )
-        return response.choices[0].message.content.strip()
+        return (response.choices[0].message.content or "").strip()
 
     else:
         # Default: Claude with prompt caching on the system prompt
@@ -62,11 +82,11 @@ def complete_with_tools(system: str, user: str, tools: list, max_tokens: int = 1
       tool_calls: list of dicts {"name": str, "input": dict, "id": str}
       stop_reason: "tool_use" | "end_turn" | "stop"
     """
-    if PROVIDER == "deepseek":
-        from openai import OpenAI
+    compat = _openai_compatible_route()
+    if compat:
         import json
 
-        client = _deepseek_client()
+        client, model = compat
 
         # Convert Anthropic tool schema to OpenAI format
         oai_tools = [
@@ -82,7 +102,7 @@ def complete_with_tools(system: str, user: str, tools: list, max_tokens: int = 1
         ]
 
         response = client.chat.completions.create(
-            model=DEEPSEEK_MODEL,
+            model=model,
             max_tokens=max_tokens,
             messages=[
                 {"role": "system", "content": system},
@@ -133,7 +153,7 @@ def make_tool_result_message(tool_calls: list, results: list[str], raw_response)
     """
     Build the follow-up messages after tool calls, in the correct format for the active provider.
     """
-    if PROVIDER == "deepseek":
+    if PROVIDER in {"deepseek", "openrouter"}:
         messages = []
         # Re-add assistant message with tool calls
         choice = raw_response.choices[0]
@@ -167,4 +187,8 @@ def active_provider() -> str:
 
 
 def active_model() -> str:
-    return DEEPSEEK_MODEL if PROVIDER == "deepseek" else CLAUDE_MODEL
+    if PROVIDER == "deepseek":
+        return DEEPSEEK_MODEL
+    if PROVIDER == "openrouter":
+        return OPENROUTER_MODEL
+    return CLAUDE_MODEL
