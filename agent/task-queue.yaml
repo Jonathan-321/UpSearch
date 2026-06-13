@@ -1,0 +1,280 @@
+version: 1
+policy:
+  max_concurrent_tasks: 1
+  task_session_persistence: true
+  require_handoff: true
+  commit_allowed: false
+  push_allowed: false
+
+tasks:
+  - id: "001"
+    title: Company-owned people source connector
+    file: agent/tasks/001-people-source-connectors.md
+    status: complete
+    priority: P0
+    reason: People sourcing is the weakest trust boundary in current packets.
+    verification: 105 tests passed after reviewer integration
+
+  - id: "002"
+    title: Broaden verified company discovery
+    file: agent/tasks/002-discovery-depth.md
+    status: complete
+    priority: P1
+    reason: Rediscovery works, but repeated HN and Reddit results limit throughput.
+    verification: 118 tests passed plus live two-lane discovery review
+
+  - id: "003"
+    title: Distinguish absent traces from coordination failures
+    file: agent/tasks/003-trace-integrity.md
+    status: complete
+    priority: P1
+    reason: Older packets can be mislabeled as failed when trace data never existed.
+    verification: 123 tests passed, frontend build passed, browser review verified
+
+  - id: "004a"
+    title: Build optional W&B tracker core
+    file: agent/tasks/004a-wandb-tracker-core.md
+    status: complete
+    priority: P2
+    reason: Local-first, privacy-filtered metrics must be reliable before orchestration wiring.
+    verification: 20 focused tests and 143 full-suite tests passed
+
+  - id: "004b"
+    title: Wire Opportunity OS metrics into the orchestrator
+    file: agent/tasks/004b-wandb-orchestrator.md
+    status: complete
+    priority: P2
+    reason: The autonomous loop needs comparable run and outcome metrics.
+    verification: 149 total, 6 integration tests pass
+
+  - id: "005"
+    title: Add strong-model QA routing and fixed benchmark
+    file: agent/tasks/005-qa-routing-benchmark.md
+    status: complete
+    priority: P0
+    reason: Verification quality must be measurable and fail closed.
+    verification: 158 total, 11 focused tests pass
+
+  - id: "006"
+    title: Add Baseten and Modal golden packet acceptance
+    file: agent/tasks/006-golden-packet-acceptance.md
+    status: complete
+    priority: P0
+    reason: The full product loop needs repeatable proof on fixed companies.
+    verification: 181 total, 23 golden tests pass
+
+  - id: "007"
+    title: Prove approval and external-action safety
+    file: agent/tasks/007-action-safety.md
+    status: complete
+    priority: P0
+    reason: External handoffs must match exact reviewed state and be idempotent.
+    verification: 207 total, 26 action safety tests pass
+
+  - id: "008"
+    title: Add deployment and restart recovery baseline
+    file: agent/tasks/008-deployment-recovery.md
+    status: complete
+    priority: P1
+    reason: The app needs persistent state and operator-safe deployment.
+    verification: 234 total, 27 recovery tests pass
+
+  - id: "009"
+    title: Synthesize current and target architecture
+    file: agent/tasks/009-architecture-synthesis.md
+    status: complete
+    priority: P0
+    reason: Integration work needs explicit boundaries and a shared run-state model.
+    verification: 234 tests passed and five architecture artifacts validated
+
+  - id: "010"
+    title: Extract the unified orchestrator service
+    file: agent/tasks/010-application-boundary-integration.md
+    status: complete
+    priority: P0
+    reason: HTTP, CLI, and scheduler must invoke the same packet-run contract.
+    verification: 240 tests pass; HTTP and CLI use unified run_pipeline
+
+  - id: "011"
+    title: Move scheduler execution onto the orchestrator service
+    file: agent/tasks/011-run-state-worker-integration.md
+    status: complete
+    priority: P0
+    reason: The background worker must not maintain another pipeline implementation.
+    verification: 61 focused tests pass; scheduler uses run_pipeline with stable retry lineage and restart recovery
+
+  - id: "012"
+    title: Persist traces and expose live run state
+    file: agent/tasks/012-api-ui-contract-integration.md
+    status: complete
+    priority: P0
+    reason: Runs and traces must survive restarts and drive explicit UI state.
+    verification: 258 tests pass; frontend build and both historical/live browser trace states verified
+
+  - id: "013"
+    title: Integrate delivery state and follow-ups
+    file: agent/tasks/013-delivery-followup-integration.md
+    status: complete
+    priority: P0
+    reason: The opportunity loop is incomplete until outcomes and follow-ups are visible.
+    verification: 263 tests pass; frontend build and browser approval-gate behavior verified
+
+  - id: "014"
+    title: Run complete release integration acceptance
+    file: agent/tasks/014-release-integration-acceptance.md
+    status: complete
+    priority: P0
+    reason: Phase 1 needs one restart-safe, approval-safe end-to-end proof.
+    verification: release script, 264 tests, frontend build, compose config, and diff check pass
+
+  - id: "015"
+    title: Identity-safe profile ingestion and provenance
+    file: agent/tasks/015-profile-identity-provenance.md
+    status: complete
+    priority: P0
+    reason: Fetched and discovered sources can silently overwrite user identity, and proof points lack machine-readable provenance.
+    verification: 281 total, 12 focused profile tests pass; compile and diff check clean
+
+  - id: "016"
+    title: OpenRouter route and visible config validation
+    file: agent/tasks/016-openrouter-route-and-config-validation.md
+    status: complete
+    priority: P0
+    reason: The operator has an OpenRouter key but no DeepSeek key, so agents silently degrade and QA fails closed, blocking every approval.
+    verification: 292 total, 11 focused config tests pass; compile and diff check clean
+
+  - id: "017"
+    title: Official-domain fallback for company identity
+    file: agent/tasks/017-company-identity-official-domain-fallback.md
+    status: complete
+    priority: P0
+    reason: Live Baseten run blocked at the identity gate on competitor-polluted evidence; www-hosted companies were also systematically unverifiable.
+    verification: 298 total, 6 focused fallback tests pass; live polluted-evidence case verifies at 1.0
+
+  - id: "018"
+    title: Problem sources from all retrieval channels
+    file: agent/tasks/018-problem-source-retrieval.md
+    status: complete
+    priority: P0
+    reason: Only HN/Reddit URLs were citable, so empty channels stripped real web/blog-backed problems and the fabrication gate blocked the packet.
+    verification: 300 total, 3 focused problem tests pass
+
+  - id: "019"
+    title: Surface config problems and QA degraded mode in the UI
+    file: agent/tasks/019-ui-config-and-qa-honesty.md
+    status: complete
+    priority: P1
+    reason: Model-status problems and QA degraded mode were invisible in the UI, hiding real operational state from the reviewer.
+    verification: 300 total including new API contract test; frontend build passes
+
+  - id: "020"
+    title: Outreach draft robustness
+    file: agent/tasks/020-outreach-draft-robustness.md
+    status: complete
+    priority: P0
+    reason: A null outreach variant from the model crashed packet persistence at the end of an otherwise successful live run.
+    verification: 302 total, 2 focused outreach tests pass
+
+  - id: "021"
+    title: QA reasoning headroom and draft dash normalization
+    file: agent/tasks/021-qa-reasoning-headroom.md
+    status: complete
+    priority: P0
+    reason: deepseek-r1 starved at 512 tokens returned an unparseable verdict, and drafts kept tripping the deterministic dash rule.
+    verification: 304 total, 10 focused tests pass
+
+  - id: "022"
+    title: Deterministic person-name gate
+    file: agent/tasks/022-person-name-gate.md
+    status: complete
+    priority: P0
+    reason: Nav labels, group placeholders, and blog titles were scored and displayed as people; evidence checks cannot reject strings that appear on company pages by definition.
+    verification: 310 total, 6 focused validation tests pass
+
+  - id: "023"
+    title: Verified-only outreach targeting
+    file: agent/tasks/023-verified-only-outreach.md
+    status: complete
+    priority: P0
+    reason: Drafts were queued to recipients the system itself marked unverified, flooding the decision inbox with unactionable review load.
+    verification: 313 total, 3 focused gating tests pass
+
+  - id: "024"
+    title: People data hygiene pass
+    file: agent/tasks/024-people-data-hygiene.md
+    status: complete
+    priority: P1
+    reason: The live DB carries junk people rows and 72 pending messages accumulated before the gate existed.
+    verification: 317 total, 4 focused hygiene tests; live purge removed 65 junk people, rejected 21 messages, kept 81 real people
+
+  - id: "025"
+    title: UI honesty for people, evidence, and inbox
+    file: agent/tasks/025-ui-people-honesty.md
+    status: complete
+    priority: P1
+    reason: Unverified entries displayed scores, evidence links were unreadable, and the inbox buried actionable items under junk.
+    verification: frontend build passes; default inbox dropped from 72 to 6 ready drafts
+
+  - id: "026"
+    title: Verifiable people sourcing depth
+    file: agent/tasks/026-verifiable-people-sourcing.md
+    status: complete
+    priority: P0
+    reason: Hallucinated names suppressed the GitHub fallback, the org guesser accepted impostor orgs, and author pages were never discovered.
+    verification: 343 total, 7 focused tests; live org resolution Fireworks->fw-ai, Baseten->basetenlabs
+
+  - id: "027"
+    title: Storage correctness and honesty
+    file: agent/tasks/027-storage-correctness.md
+    status: complete
+    priority: P1
+    reason: db.py ignored UPSEARCH_DB_PATH, people rows lacked verification_reason, duplicates accumulated, and the release script reported hardcoded PASS lines.
+    verification: 343 total, 13 focused tests; release script prints measured results; leaked test rows cleaned from live DB
+
+  - id: "028"
+    title: Discovery freshness and lane precision
+    file: agent/tasks/028-discovery-precision.md
+    status: complete
+    priority: P1
+    reason: HN surfaced 2017-2020 posts, lane keys missed the LANE_KEYWORDS map, HN/Reddit candidates skipped the lane gate, and Reddit failed silently.
+    verification: 343 total, 10 focused tests; live HN smoke all within 540-day bound
+
+  - id: "029"
+    title: Right-person resolver
+    file: agent/tasks/029-right-person-resolver.md
+    status: complete
+    priority: P0
+    reason: Scaling needs the verified right person deterministically; cited-source authors and problem-matched repo contributors beat model-vibes ranking.
+    verification: 350 total at landing, 6 focused tests; live cited-author resolution finds Baseten co-founder from the cited post
+
+  - id: "030"
+    title: Approval decision cards
+    file: agent/tasks/030-approval-decision-cards.md
+    status: complete
+    priority: P0
+    reason: Sent messages convert; review friction is the throughput limit. One card per person with channel tabs replaces three rows per person.
+    verification: frontend build passes; live inbox collapses 6 rows to 2 decision cards, QA flags deduped 12 to 3
+
+  - id: "031"
+    title: Profile cache and legacy archive
+    file: agent/tasks/031-profile-cache-and-legacy-archive.md
+    status: complete
+    priority: P1
+    reason: Profile re-extraction cost 12s on every run, and 24 pre-fix identity-blocked packets cluttered the CRM.
+    verification: 369 total, 19 focused tests; archive endpoints ready, statuses flip reversibly, nothing deleted
+
+  - id: "032"
+    title: Minimal blocked-packet state
+    file: agent/tasks/032-blocked-state-minimal.md
+    status: complete
+    priority: P1
+    reason: One identity block rendered as eight noise elements with irrelevant advice; the page must tell one story with one action.
+    verification: frontend build passes; blocked page reduced from 8 noise elements to a status card and skip note; non-blocked packets byte-identical
+
+  - id: "033"
+    title: Identity evidence robustness
+    file: agent/tasks/033-identity-evidence-robustness.md
+    status: complete
+    priority: P0
+    reason: JS-shell sites blocked real companies (Databricks) and a typo'd name briefly verified against the wrong company; rejections explained nothing.
+    verification: 379 total; live matrix Databricks verified, typo rejected with closest-candidate hint, Oblivus/Baseten/Together unchanged

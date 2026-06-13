@@ -1,0 +1,68 @@
+version: 1
+project: UpSearch
+phase: V2-trustworthy
+lane: ai_infrastructure_and_inference
+
+objective: >
+  Turn limited user context into a source-backed company opportunity packet
+  that can support a credible technical conversation.
+
+north_star_metric: high_quality_technical_conversations_started
+
+pipeline:
+  - profile
+  - company_identity
+  - problem_discovery
+  - people_sourcing
+  - technical_note
+  - outreach
+  - qa
+  - human_approval
+  - external_action
+  - outcome_tracking
+
+hard_invariants:
+  - no fabricated companies, people, URLs, sources, or experience claims
+  - missing evidence must remain visible
+  - unverified company identity blocks downstream generation
+  - external actions require exact human approval
+  - a requested duration loop must rediscover after an empty queue
+  - model confidence is not verification
+  - local databases, credentials, and generated outputs are never committed
+
+model_policy:
+  cheap_worker:
+    provider: deepseek
+    use_for:
+      - bounded code implementation
+      - extraction from supplied evidence
+      - schema-constrained transformations
+      - focused test repair
+  strong_reviewer:
+    use_for:
+      - architecture
+      - ambiguous product decisions
+      - final technical synthesis
+      - high-risk QA
+    fallback: manual_review
+  deterministic_first:
+    use_for:
+      - URL and identity checks
+      - word counts
+      - schemas
+      - state transitions
+      - test and build verification
+
+canonical_commands:
+  tests: uv run pytest -q
+  compile: uv run python -m compileall -q agents upsearch db.py orchestrator.py run_scheduler.py server.py
+  frontend_build: cd frontend && npm run build
+  diff_check: git diff --check
+
+escalate_when:
+  - a task requires files outside its write scope
+  - acceptance criteria conflict with current product behavior
+  - a source requires authentication or policy-sensitive scraping
+  - a migration could destroy or rewrite user data
+  - an external action would be triggered
+  - tests reveal a cross-cutting architecture defect

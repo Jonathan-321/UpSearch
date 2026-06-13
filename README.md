@@ -1,39 +1,39 @@
 # UpSearch
 
 UpSearch is an AI-powered research-to-reach system for technical students and
-early-career builders. It turns public signals into focused outreach while
-keeping a human in control of every message.
+early-career builders. It turns public signals into a source-backed company
+**opportunity packet** and human-approved outreach, while keeping a person in
+control of every external action.
 
-The project includes two workflows in one frontend:
-
-- **Quick Search:** find useful Reddit and Hacker News posts, rank leads, draft
-  one outreach email, and optionally log the result to Weights & Biases.
-- **Opportunity OS:** research a company, build a structured intelligence
-  packet, store it in a local SQLite CRM, and review outreach variants before
-  approval.
+The product is **Opportunity OS**: give it a company name and a technical lane,
+and it researches the company, extracts a real technical problem, maps relevant
+people, drafts a one-page technical note and outreach, runs QA, and lands the
+result in a human approval queue. It optimizes for high-quality technical
+conversations started, not message volume.
 
 ![UpSearch architecture](docs/assets/upsearch-architecture-clean.svg)
 
-## Features
-
-### Quick Search
-
-- Searches live Reddit and Hacker News data.
-- Uses Scout, Analyst, Strategist, and Writer agents in sequence.
-- Runs Supervisor checks after each stage.
-- Produces an editable cold email with a 200-word body limit.
-- Logs selected outreach attempts to W&B when you click `Log draft` or
-  `Mark sent + log`.
-
-### Opportunity OS
+## What it does
 
 - Builds a company packet from a company name and technical lane.
 - Runs Profile, Company, Problem, People, Technical Note, Outreach, and QA
   stages with live SSE progress updates.
+- Verifies company identity and blocks downstream generation when it cannot be
+  established from retrieved evidence.
 - Stores companies, problems, people, packets, and messages in a local SQLite
   CRM.
-- Surfaces drafts in a human approval queue.
-- Never sends messages autonomously.
+- Surfaces drafts in a human approval queue and never sends messages
+  autonomously.
+- Runs a background scheduler that can rediscover companies for a requested
+  duration.
+
+## Hard invariants
+
+- No fabricated companies, people, URLs, sources, or experience claims.
+- Missing evidence stays visible as an explicit state.
+- Unverified company identity blocks downstream generation.
+- External actions require exact human approval.
+- Model confidence is not verification; deterministic checks run first.
 
 ## User Data and LinkedIn
 
@@ -41,57 +41,50 @@ UpSearch does not automatically fetch your LinkedIn profile. Your personal
 background comes from `profile.txt`, which you edit manually with your skills,
 coursework, interests, and goals.
 
-For target contacts, the People Agent searches public Hacker News signal and
-may suggest public LinkedIn or GitHub URLs when available. Those profile links
-must be verified manually before you use them for outreach.
+For target contacts, the People Agent searches public signal (Hacker News,
+GitHub, company pages) and may suggest public LinkedIn or GitHub URLs when
+available. Those profile links must be verified before they are used for
+outreach.
 
 ## Product planning docs
 
 - [Opportunity Intelligence OS docs](docs/opportunity-intelligence/README.md)
-- [Multi-agent orchestrator plan](docs/opportunity-intelligence/multi-agent-orchestrator-plan.md)
-- [Phase 1 build plan](docs/opportunity-intelligence/phase-1-build-plan.md)
-- [Component audit](docs/opportunity-intelligence/component-audit.md)
-
-## Presentation
-
-- [Editable 3-minute pitch deck](docs/presentation/upsearch-pitch-deck.html)
-- [Exported pitch deck PDF](docs/presentation/upsearch-pitch-deck.pdf)
-- [Speaker notes](docs/presentation/speaker-notes.md)
+- [First use case charter](docs/opportunity-intelligence/upsearch-first-use-case-charter.md)
+- [Current-state architecture](docs/architecture/current-state.md)
+- [Target architecture](docs/architecture/target-state.md)
 
 ## Quick Start
 
 ### Requirements
 
-- Python 3.10 or newer
+- Python 3.11 or newer
 - Node.js 18 or newer
-- An Anthropic API key or a DeepSeek API key
-- A Weights & Biases API key if you want to log Quick Search runs
+- An OpenRouter, DeepSeek, or Anthropic API key
 
 ### Setup
 
-1. Install Python dependencies.
+1. Install Python dependencies (uv is the canonical tool; pip also works).
 
    ```bash
-   pip install -r requirements.txt
+   uv sync
+   # or: pip install -e .
    ```
 
-2. Create `.env` in the project root.
-
-   For DeepSeek:
+2. Create `.env` in the project root. Start from `.env.example`, which documents
+   the agent provider and the strong/QA model route. The simplest single-key
+   setup uses OpenRouter:
 
    ```dotenv
-   MODEL_PROVIDER=deepseek
-   DEEPSEEK_API_KEY=your_key
-   WANDB_API_KEY=your_wandb_key
+   MODEL_PROVIDER=openrouter
+   OPENROUTER_API_KEY=your_key
+   UPSEARCH_CHEAP_MODEL_PROVIDER=openrouter
+   UPSEARCH_CHEAP_MODEL=deepseek/deepseek-chat
+   UPSEARCH_STRONG_MODEL_PROVIDER=openrouter
+   UPSEARCH_STRONG_MODEL=openai/gpt-5
    ```
 
-   For Claude:
-
-   ```dotenv
-   MODEL_PROVIDER=claude
-   ANTHROPIC_API_KEY=your_key
-   WANDB_API_KEY=your_wandb_key
-   ```
+   When the strong model is unset, QA falls back to the cheap model and runs in
+   degraded mode (it will not claim strong-model verification).
 
 3. Edit `profile.txt` with your background, skills, interests, and goals.
 
@@ -122,28 +115,11 @@ Open:
 - Frontend: [http://localhost:5180](http://localhost:5180)
 - API docs: [http://localhost:8000/docs](http://localhost:8000/docs)
 
-The frontend opens in **Opportunity OS** mode. Use the header toggle to switch
-to **Quick Search**.
+The frontend opens in **Build Packet** mode. Use the header toggle to switch to
+**Review** for profile truth, source grounding, people verification, approval
+gates, and run traces.
 
 ## CLI Usage
-
-### Quick Search
-
-```bash
-python main.py --mode jobs --topic "ML inference engineer internship"
-python main.py --mode research --topic "speculative decoding"
-python main.py --mode jobs --topic "LLM serving" --pick 1 --no-log
-```
-
-| Option | Description |
-|---|---|
-| `--mode jobs` or `--mode research` | Choose the pipeline mode |
-| `--topic "..."` | Set the search topic or target role |
-| `--pick N` | Automatically select ranked result `N` |
-| `--no-log` | Skip the W&B logging prompt |
-| `--no-supervise` | Skip Supervisor evaluations for a faster run |
-
-### Opportunity OS
 
 ```bash
 python os_main.py packet --company Baseten --lane ai_infra
@@ -161,82 +137,33 @@ ai_infra, inference, agentic, dev_tools, data, robotics
 
 ## Architecture
 
-### Quick Search Pipeline
-
-```text
-Topic or role
-    |
-Scout Agent           Searches Reddit and Hacker News through tool use
-    |
-Supervisor            Scores source relevance and diversity
-    |
-Analyst Agent         Scores fit and extracts a realistic contribution angle
-    |
-Supervisor            Checks score calibration and contact type
-    |
-User selects a lead
-    |
-Strategist Agent      Chooses target role, hook, channel, and icebreaker
-    |
-Supervisor            Checks specificity and quality
-    |
-Writer Agent          Drafts a cold email with a 200-word body limit
-    |
-Supervisor            Checks length, tone, and outreach rules
-    |
-W&B Tracker           Optionally logs the selected run and draft artifact
-```
-
-### Opportunity OS Pipeline
-
 ```text
 Company name + lane
     |
-Profile Agent         Parses profile.txt
+Profile Agent         Parses profile.txt into structured proof points
     |
-Company Agent         Researches fit, stack, and hiring signal
+Company Agent         Researches fit, stack, hiring signal; verifies identity
     |
-Problem Agent         Extracts open technical problems
+Problem Agent         Extracts source-backed open technical problems
     |
 People Agent          Maps relevant people by proximity to the problem
     |
-Technical Note Agent  Writes a focused one-page brief
+Technical Note Agent  Writes a focused one-page brief + adjacent proof
     |
-Outreach Agent        Drafts email and LinkedIn variants
+Outreach Agent        Drafts email and LinkedIn variants (verified people only)
     |
 QA Agent              Checks claims, sources, word count, and tone
     |
+Packet checkup        Blocks weak runs instead of polishing them
+    |
 Human approval queue  Requires an explicit approve action
     |
-SQLite CRM            Stores local packet and outreach records
+SQLite CRM            Stores local packet, trace, and outreach records
 ```
 
-## W&B Logging
-
-The `WANDB_API_KEY` connects Quick Search to your Weights & Biases account. The
-key is loaded from `.env` and read automatically by the W&B Python SDK.
-
-When you log an outreach attempt, UpSearch creates a run in the `upsearch`
-project with:
-
-| Metric or field | Description |
-|---|---|
-| `fit_score` | Analyst fit score for the selected lead |
-| `word_count` | Draft word count |
-| `sent` | Whether the draft was marked as sent |
-| `supervisor_overall_score` | Average quality score |
-| `supervisor_scout_score` | Scout evaluation |
-| `supervisor_analyst_score` | Analyst evaluation |
-| `supervisor_strategist_score` | Strategist evaluation |
-| `supervisor_writer_score` | Writer evaluation |
-
-Each logged run also uploads:
-
-- `draft.txt`
-- `supervisor_report.json`
-
-Opportunity OS packets are currently stored locally in SQLite. They are not
-sent to W&B yet.
+A single `run_pipeline` entry point in `upsearch/orchestrator_service.py` is
+shared by the SSE stream (`server.py`), the CLI (`os_main.py`/`orchestrator.py`),
+and the background scheduler (`run_scheduler.py`).
 
 ## Outreach Rules
 
@@ -248,17 +175,23 @@ sent to W&B yet.
 - Do not fabricate experience.
 - Require explicit human approval before sending any external message.
 
+## Run Tracking
+
+Pipeline runs emit local-first, privacy-filtered metrics through
+`upsearch/tracking.py` (`RunLogger`), written as JSONL under
+`UPSEARCH_TRACKING_DIR`. Set `WANDB_API_KEY` (and install the optional
+`tracking` extra) to also mirror metrics to Weights & Biases.
+
 ## Project Structure
 
 ```text
 UpSearch/
-|-- main.py                      # Quick Search CLI
 |-- os_main.py                   # Opportunity OS CLI
-|-- server.py                    # FastAPI server for /api/* and /os/*
+|-- server.py                    # FastAPI server (/os/* + /api/{health,profile,config})
 |-- db.py                        # SQLite CRM schema and query helpers
-|-- orchestrator.py              # Opportunity OS orchestration
+|-- orchestrator.py              # CLI adapter over the orchestrator service
+|-- run_scheduler.py             # Background rediscovery worker
 |-- profile.txt                  # User background used by agents
-|-- requirements.txt
 |-- .env                         # Local API keys, ignored by git
 |-- opportunity_os.db            # Local CRM database
 |
@@ -272,19 +205,17 @@ UpSearch/
 |   |-- qa.py
 |   `-- action.py
 |
-|-- upsearch/                    # Quick Search pipeline
-|   |-- llm.py                   # Claude and DeepSeek routing
-|   |-- supervisor.py            # Quality evaluation
-|   |-- tracker.py               # W&B logging
-|   |-- agents/
-|   `-- sourcing/
+|-- upsearch/                    # Pipeline support modules
+|   |-- orchestrator_service.py  # Single run_pipeline entry point
+|   |-- llm.py                   # Agent LLM provider routing
+|   |-- model_router.py          # Cost-aware route selection
+|   |-- model_execution.py       # Provider call wrapper
+|   |-- packet_checkup.py        # Stage gating
+|   |-- tracking.py              # Local JSONL + optional W&B logging
+|   |-- auto_discovery.py        # Company discovery
+|   `-- sourcing/                # web, rss, github, hackernews, reddit
 |
-|-- docs/
-|   `-- assets/
-|       |-- upsearch-architecture.png
-|       |-- upsearch-architecture-v2.png
-|       |-- upsearch-architecture-v3.svg
-|       `-- upsearch-architecture-clean.svg
+|-- tests/                       # pytest suite
 |
 `-- frontend/
     |-- src/
@@ -296,9 +227,8 @@ UpSearch/
 
 ## Current Limitations
 
-- Quick Search W&B history in the browser begins with demo rows and is updated
-  with newly logged runs during the current browser session. It does not fetch
-  historical runs back from W&B yet.
-- Opportunity OS stores packets locally and does not mirror its stages to W&B
-  yet.
-- Approval records do not send emails or LinkedIn messages automatically.
+- People sourcing coverage varies by company; verify contacts before outreach.
+- Approval records open the destination surface but do not send emails or
+  LinkedIn messages automatically.
+- A server restart mid-stream loses in-flight generator state, though runs and
+  traces are persisted to the database.

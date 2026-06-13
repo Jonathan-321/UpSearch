@@ -60,6 +60,8 @@ The next implementation step is not more one-off sourcing. It is to turn the man
 4. W&B logging for every run.
 5. Human approval gates before external actions.
 
+Start with `upsearch-first-use-case-charter.md` for the problem framing, done criteria, constraints, and Phase 1 success definition.
+
 See `multi-agent-orchestrator-plan.md` for the implementation plan.
 
 For the concrete Phase 1 build path, agent/tool matrix, Hermes role, hosting path, and short presentation outline, see:
